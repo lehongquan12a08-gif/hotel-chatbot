@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Hotel Chat Widget</title>
+
+<style>
+#chat-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  font-family: Arial;
+}
+
+/* CHAT BOX */
+#chat-box {
+  background: rgba(255, 255, 255, 0.85); /* trong suốt nhẹ */
+  backdrop-filter: blur(6px);           /* hiệu ứng kính mờ */
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  display: none;
+  flex-direction: column;
+  height: 420px;
+}
+
+/* MESSAGE AREA */
+#messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+/* INPUT AREA */
+#input {
+  display: flex;
+  border-top: 1px solid #ddd;
+}
+
+#input input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+#input button {
+  padding: 10px 14px;
+  background: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* CHAT BUTTON */
+#chat-btn {
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div id="chat-widget">
+  <button id="chat-btn">💬</button>
+
+  <div id="chat-box">
+    <div id="quick-buttons"></div>
+    <div id="messages"></div>
+
+    <div id="input">
+      <input id="text" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button onclick="send()">Gửi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const chatBtn = document.getElementById("chat-btn");
+const chatBox = document.getElementById("chat-box");
+const input = document.getElementById("text");
+const messages = document.getElementById("messages");
+
+chatBtn.onclick = () => {
+  chatBox.style.display =
+    chatBox.style.display === "flex" ? "none" : "flex";
+};
+
+// ENTER để gửi
+input.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    send();
+  }
+});
+
+function addMessage(sender, text, buttons = []) {
+  const div = document.createElement("div");
+  div.style.marginBottom = "6px";
+  div.style.whiteSpace = "pre-line";
+  div.innerHTML = `<b>${sender}:</b>\n${text}`;
+  messages.appendChild(div);
+
+  // 👉 RENDER BUTTON
+  if (buttons.length > 0) {
+    const btnWrap = document.createElement("div");
+    btnWrap.style.margin = "8px 0 12px";
+
+    buttons.forEach(b => {
+      const btn = document.createElement("button");
+      btn.innerText = b.label;
+      btn.style.marginRight = "6px";
+      btn.style.marginTop = "6px";
+      btn.style.padding = "6px 12px";
+      btn.style.border = "none";
+      btn.style.borderRadius = "6px";
+      btn.style.cursor = "pointer";
+      btn.style.background = "#007bff";
+      btn.style.color = "white";
+
+      btn.onclick = () => send(b.value);
+      btnWrap.appendChild(btn);
+    });
+
+    messages.appendChild(btnWrap);
+  }
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
+async function send(textOverride = null) {
+  const text = textOverride || input.value.trim();
+  if (!text) return;
+
+  addMessage("Bạn", text);
+  input.value = "";
+
+  const res = await fetch("/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ message: text })
+  });
+
+  const data = await res.json();
+
+  addMessage(
+    "REGENT",
+    data.reply,
+    data.buttons || []
+  );
+}
+</script>
+
+
+</body>
+</html>

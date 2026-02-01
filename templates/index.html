@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Regent Phu Quoc</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Montserrat', sans-serif; }
+
+/* ===== HEADER ===== */
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  z-index: 10;
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+
+.logo span {
+  display: block;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  letter-spacing: 5px;
+  margin-top: 6px;
+}
+
+/* ===== HERO ===== */
+.hero {
+  height: 100vh;
+  background: url("/static/bg.jpg") center/cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+}
+
+.hero-box {
+  padding: 50px 70px;
+  background: rgba(0,0,0,0.38);
+  border: 1px solid rgba(255,255,255,0.35);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 48px;
+  letter-spacing: 4px;
+  line-height: 1.35;
+  margin-bottom: 30px;
+}
+
+.hero button {
+  padding: 14px 32px;
+  background: #8a5a00;
+  border: none;
+  color: white;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+
+/* ===== CHAT ===== */
+#chat-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99;
+}
+
+#chat-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  background: rgba(0,0,0,0.6);
+  color: white;
+}
+
+#chat-box {
+  display: none;
+  flex-direction: column;
+  width: 320px;
+  height: 420px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px);
+  color: white;
+  overflow: hidden;
+}
+
+#messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.msg {
+  white-space: pre-line;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.typing {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+#input {
+  display: flex;
+}
+
+#input input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+}
+
+#input button {
+  padding: 10px 14px;
+  border: none;
+  background: #8a5a00;
+  color: white;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">REGENT<span>PHU QUOC</span></div>
+  <div class="menu">MENU</div>
+</header>
+
+<section class="hero">
+  <div class="hero-box">
+    <h1>
+      HÃY TRẢI NGHIỆM SỰ TỰ DO<br>
+      VÀ ĐỂ TRÍ TƯỞNG TƯỢNG<br>
+      BAY CAO
+    </h1>
+    <button>ĐẶT PHÒNG NGAY</button>
+  </div>
+</section>
+
+<!-- ===== CHATBOT ===== -->
+<div id="chat-widget">
+  <button id="chat-btn">💬</button>
+
+  <div id="chat-box">
+    <div id="messages"></div>
+
+    <div id="input">
+      <input id="text" placeholder="Nhập tin nhắn...">
+      <button onclick="send()">Gửi</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const chatBtn = document.getElementById("chat-btn");
+const chatBox = document.getElementById("chat-box");
+const messages = document.getElementById("messages");
+const input = document.getElementById("text");
+
+let greeted = false;
+
+/* ===== TOGGLE CHAT ===== */
+chatBtn.onclick = () => {
+  const isOpen = chatBox.style.display === "flex";
+  chatBox.style.display = isOpen ? "none" : "flex";
+
+  if (!isOpen && !greeted) {
+    addMessage(
+      "REGENT",
+      "- Chào quý khách.\n- Tôi là lễ tân khách sạn EDEN Regent Phú Quốc.\n- Tôi có thể hỗ trợ quý khách điều gì ạ?"
+    );
+    greeted = true;
+  }
+};
+
+/* ===== ENTER TO SEND ===== */
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
+
+/* ===== ADD MESSAGE + BUTTON ===== */
+function addMessage(sender, text, buttons = []) {
+  const msg = document.createElement("div");
+  msg.className = "msg";
+  msg.style.whiteSpace = "pre-line";
+  msg.innerHTML = `<b>${sender}:</b>\n${text}`;
+  messages.appendChild(msg);
+
+  if (buttons.length > 0) {
+    const wrap = document.createElement("div");
+    wrap.style.display = "flex";
+    wrap.style.flexWrap = "wrap";
+    wrap.style.gap = "8px";
+    wrap.style.margin = "6px 0 12px";
+
+    buttons.forEach(b => {
+      const btn = document.createElement("button");
+      btn.textContent = b.label;
+      btn.style.padding = "6px 14px";
+      btn.style.borderRadius = "18px";
+      btn.style.border = "none";
+      btn.style.cursor = "pointer";
+      btn.style.background = "#8a5a00";
+      btn.style.color = "white";
+
+      btn.onclick = () => send(b.value);
+      wrap.appendChild(btn);
+    });
+
+    messages.appendChild(wrap);
+  }
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
+/* ===== SEND ===== */
+async function send(textOverride = null) {
+  const text = textOverride || input.value.trim();
+  if (!text) return;
+
+  addMessage("Bạn", text);
+  input.value = "";
+
+  const res = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: text })
+  });
+
+  const data = await res.json();
+  addMessage("REGENT", data.reply, data.buttons || []);
+}
+</script>
+
+
+</body>
+</html>
