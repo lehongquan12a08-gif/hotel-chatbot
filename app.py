@@ -9,7 +9,7 @@ app.secret_key = "eden-secret-key"
 # ================== GEMINI MULTI KEY ==================
 def get_gemini_client():
     keys = [
-        os.environ.get("Ask-svcacct-sBrB6fDen2-dhtJwEatJxD-Vbvw3DxHYuS7yF1TAinSBr-y6WdKLDxVOdlEMTk-kCSdH4rvbRVT3BlbkFJ6H9Oiih6TFaYpQrhUYPt6noTCS2D9zaGHFKCpy2DJSxsuY461VyFXoI59T423hCdwpvdsArTgA"),
+        os.environ.get("GEMINI_API_KEY"),
         os.environ.get("GOOGLE_API_KEY"),
     ]
     keys = [k for k in keys if k]
