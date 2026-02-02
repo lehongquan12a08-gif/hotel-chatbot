@@ -52,10 +52,14 @@ def chat():
     msg = request.json.get("message", "").strip()
 
     # ===== KÍCH HOẠT ĐẶT PHÒNG =====
-    if any(k in msg.lower() for k in ["đặt phòng", "dat phong", "book", "booking"]):
+# ===== KÍCH HOẠT ĐẶT PHÒNG (CHỈ KHI CHƯA CÓ FLOW) =====
+    if "step" not in session and any(
+        k in msg.lower() for k in ["đặt phòng", "dat phong", "book", "booking"]
+    ):
         session.clear()
         session["step"] = "checkin"
         session["booking"] = {}
+
         return jsonify({
             "reply": "Quý khách vui lòng cho biết ngày nhận phòng?",
             "buttons": [
@@ -64,6 +68,7 @@ def chat():
                 {"label": "✍️ Tự nhập", "value": ""}
             ]
         })
+
 
     # ===== FLOW ĐẶT PHÒNG =====
     if "step" in session:
@@ -140,7 +145,7 @@ def chat():
             return jsonify({
                 "reply": summary,
                 "buttons": [
-                    {"label": "✅ Xác nhận", "value": "Hoàn tất !\n Lễ tân sẽ liên hệ lại sớm nhất cho quý khách !"},
+                    {"label": "✅ Xác nhận", "value": "confirm"},
                     {"label": "❌ Hủy", "value": "cancel"},
                 ]
             })
@@ -148,13 +153,20 @@ def chat():
         if step == "confirm":
             if msg == "confirm":
                 save_booking(session["booking"])
-                session.clear()
+
+                reply = "🎉 Đặt phòng thành công! Lễ tân sẽ liên hệ xác nhận."
+
+                session.clear()  # clear SAU khi đã xử lý xong
+
                 return jsonify({
-                    "reply": "🎉 Đặt phòng thành công! Lễ tân sẽ liên hệ xác nhận."
+                    "reply": reply
                 })
             else:
                 session.clear()
-                return jsonify({"reply": "❌ Đặt phòng đã được hủy."})
+                return jsonify({
+                    "reply": "❌ Đặt phòng đã được hủy."
+                })
+
 
     # ===== FAQ GEMINI =====
     try:
