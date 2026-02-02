@@ -1,9 +1,7 @@
 import os
+import json
 import gspread
 from google.oauth2.service_account import Credentials
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CREDS_PATH = os.path.join(BASE_DIR, "service_account.json")
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -11,8 +9,13 @@ SCOPES = [
 ]
 
 def save_booking(data):
-    creds = Credentials.from_service_account_file(
-        CREDS_PATH,
+    # Lấy credentials từ ENV (Render)
+    service_account_info = json.loads(
+        os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    )
+
+    creds = Credentials.from_service_account_info(
+        service_account_info,
         scopes=SCOPES
     )
 
