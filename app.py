@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify, session
 import os, random
 from google_sheet import save_booking
-from google import genai
+import google.generativeai as genai
+
 
 app = Flask(__name__)
 app.secret_key = "eden-secret-key"
