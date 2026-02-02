@@ -1,6 +1,4 @@
-import os
-import json
-import gspread
+import os, json, gspread
 from google.oauth2.service_account import Credentials
 
 SCOPES = [
@@ -9,7 +7,6 @@ SCOPES = [
 ]
 
 def save_booking(data):
-    # Lấy credentials từ ENV (Render)
     service_account_info = json.loads(
         os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
     )

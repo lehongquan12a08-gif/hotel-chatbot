@@ -140,7 +140,7 @@ def chat():
             return jsonify({
                 "reply": summary,
                 "buttons": [
-                    {"label": "✅ Xác nhận", "value": "Đặt phòng thành công !\n Lễ tân sẽ liên hệ lại sớm nhất cho quý khách !"},
+                    {"label": "✅ Xác nhận", "value": "Hoàn tất !\n Lễ tân sẽ liên hệ lại sớm nhất cho quý khách !"},
                     {"label": "❌ Hủy", "value": "cancel"},
                 ]
             })
