@@ -105,33 +105,39 @@ input.addEventListener("keydown", function(e) {
 
 function addMessage(sender, text, buttons = []) {
   const div = document.createElement("div");
-  div.style.marginBottom = "6px";
-  div.style.whiteSpace = "pre-line";
-  div.innerHTML = `<b>${sender}:</b>\n${text}`;
+  div.className = "msg";
+
+  // ✅ Chuẩn hóa xuống dòng
+  const cleanText = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  div.textContent = `${sender}:\n${cleanText}`;
   messages.appendChild(div);
 
-  // 👉 RENDER BUTTON
+  // ===== BUTTON =====
   if (buttons.length > 0) {
-    const btnWrap = document.createElement("div");
-    btnWrap.style.margin = "8px 0 12px";
+    const wrap = document.createElement("div");
+    wrap.style.display = "flex";
+    wrap.style.flexWrap = "wrap";
+    wrap.style.gap = "8px";
+    wrap.style.margin = "6px 0 12px";
 
     buttons.forEach(b => {
       const btn = document.createElement("button");
-      btn.innerText = b.label;
-      btn.style.marginRight = "6px";
-      btn.style.marginTop = "6px";
-      btn.style.padding = "6px 12px";
+      btn.textContent = b.label;
+      btn.style.padding = "6px 14px";
+      btn.style.borderRadius = "18px";
       btn.style.border = "none";
-      btn.style.borderRadius = "6px";
       btn.style.cursor = "pointer";
-      btn.style.background = "#007bff";
+      btn.style.background = "#8a5a00";
       btn.style.color = "white";
-
       btn.onclick = () => send(b.value);
-      btnWrap.appendChild(btn);
+      wrap.appendChild(btn);
     });
 
-    messages.appendChild(btnWrap);
+    messages.appendChild(wrap);
   }
 
   messages.scrollTop = messages.scrollHeight;

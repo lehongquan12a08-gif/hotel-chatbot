@@ -113,8 +113,25 @@ def chat():
             })
 
         # --- PHONE ---
+        # --- PHONE ---
         if step == "phone":
             b["phone"] = msg
+            session["step"] = "note"
+            return jsonify({
+                "reply": "Quý khách có ghi chú thêm không? (có thể bỏ qua)",
+                "buttons": [
+                    {"label": "✍️ Hãy ghi ở dưới:", "value": ""},
+                    {"label": "⏭️ Bỏ qua", "value": "skip"}
+        ]
+            })
+        
+        # --- NOTE ---
+        if step == "note":
+            if msg_lower == "skip":
+                b["note"] = "Không có"
+            else:
+                b["note"] = msg
+
             session["step"] = "confirm"
 
             summary = (
@@ -124,7 +141,8 @@ def chat():
                 f"- Phòng: {b['room']}\n"
                 f"- Số khách: {b['guests']}\n"
                 f"- Tên: {b['name']}\n"
-                f"- SĐT: {b['phone']}"
+                f"- SĐT: {b['phone']}\n"
+                f"- Ghi chú: {b['note']}"
             )
 
             return jsonify({
@@ -170,10 +188,9 @@ def chat():
 
 
     # ===== 3. CHỈ GÕ 'đặt phòng' MỚI BẮT ĐẦU BOOKING =====
-    # ===== 3. CHỈ GÕ 'đặt phòng' MỚI BẮT ĐẦU BOOKING =====
     if msg_lower in [
         "đặt phòng", "dat phong", "booking", "book",
-        "tôi muốn đặt phòng", "toi muon dat phong"
+        "tôi muốn đặt phòng", "toi muon dat phong","cho tôi đặt phòng","cho toi dat phong"
     ]:
         session.clear()
         session["step"] = "checkin"

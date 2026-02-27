@@ -49,5 +49,6 @@ def save_booking(data):
         data.get("room"),
         data.get("guests"),
         data.get("name"),
-        data.get("phone")
+        data.get("phone"),
+        data.get("note")
     ])
