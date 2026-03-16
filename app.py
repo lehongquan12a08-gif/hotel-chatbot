@@ -68,7 +68,7 @@ def chat():
                 "buttons": [
                     {"label": "📅 Ngày mai", "value": "ngày mai"},
                     {"label": "📅 Sau 2 ngày", "value": "sau 2 ngày"},
-                    {"label": "✍️ Tự nhập:", "value": ""}
+                    {"label": "✍️ Tự điền phía dưới DD/MM/YYYY:", "value": ""}
                 ]
             })
 
@@ -192,7 +192,8 @@ def chat():
     # ===== 3. CHỈ GÕ 'đặt phòng' MỚI BẮT ĐẦU BOOKING =====
     if msg_lower in [
         "đặt phòng", "dat phong", "booking", "book",
-        "tôi muốn đặt phòng", "toi muon dat phong","cho tôi đặt phòng","cho toi dat phong"
+        "tôi muốn đặt phòng", "toi muon dat phong","cho tôi đặt phòng","cho toi dat phong","Đặt phòng", "Dat phong", "Booking", "Book",
+        "Tôi muốn đặt phòng", "Toi muon dat phong","Cho tôi đặt phòng","Cho toi dat phong"
     ]:
         session.clear()
         session["step"] = "checkin"
@@ -203,7 +204,7 @@ def chat():
             "buttons": [
                 {"label": "📅 Hôm nay", "value": "hôm nay"},
                 {"label": "📅 Ngày mai", "value": "ngày mai"},
-                {"label": "✍️ Tự nhập", "value": ""}
+                {"label": "✍️ Tự điền phía dưới DD/MM/YYYY", "value": ""}
             ]
         })
 
@@ -226,7 +227,7 @@ Khách hỏi: {msg}
     except Exception as e:
         print("Gemini error:", e)
         return jsonify({
-            "reply": "Xin lỗi quý khách, hệ thống đang bận 😥\nQuý khách có thể thử lại sau hoặc gõ *đặt phòng*."
+            "reply": "Xin lỗi quý khách, hệ thống đang bận \nQuý khách có thể thử lại sau."
         })
 
 # ================== RUN ==================
