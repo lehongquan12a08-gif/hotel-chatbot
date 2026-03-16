@@ -213,6 +213,7 @@ def chat():
         reply = ask_gemini(f"""
 Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.
 Trả lời lịch sự, ngắn gọn, tiếng Việt.
+Muốn đặt phòng bắt buộc phải ghi đúng mỗi chữ 'đặt phòng'
 
 Thông tin khách sạn:
 {HOTEL_INFO}
