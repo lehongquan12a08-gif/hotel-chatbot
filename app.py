@@ -36,6 +36,8 @@ Tiện ích:
 - Nhà hàng
 - Wi-Fi miễn phí
 - Lễ tân 24/7
+- Quầy bar trên cao
+- Lê tân xinh đẹp tuyệt trần
 """
 
 # ================== ROUTES ==================
