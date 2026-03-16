@@ -43,6 +43,7 @@ Tiện ích:
 # ================== ROUTES ==================
 @app.route("/")
 def home():
+    session.clear()   
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
@@ -64,12 +65,7 @@ def chat():
             b["checkin"] = msg
             session["step"] = "checkout"
             return jsonify({
-                "reply": "Vui lòng cho biết ngày trả phòng?",
-                "buttons": [
-                    {"label": "📅 Ngày mai", "value": "ngày mai"},
-                    {"label": "📅 Sau 2 ngày", "value": "sau 2 ngày"},
-                    {"label": "✍️ Tự điền phía dưới DD/MM/YYYY:", "value": ""}
-                ]
+                "reply": "Vui lòng cho biết ngày trả phòng? (DD/MM/YYYY)"
             })
 
         # --- CHECK-OUT ---
@@ -200,12 +196,8 @@ def chat():
         session["booking"] = {}
 
         return jsonify({
-            "reply": "Quý khách vui lòng cho biết ngày nhận phòng?",
-            "buttons": [
-                {"label": "📅 Hôm nay", "value": "hôm nay"},
-                {"label": "📅 Ngày mai", "value": "ngày mai"},
-                {"label": "✍️ Tự điền phía dưới DD/MM/YYYY", "value": ""}
-            ]
+            "reply": "Quý khách vui lòng cho biết ngày nhận phòng? (DD/MM/YYYY)",
+
         })
 
 
