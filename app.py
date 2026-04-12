@@ -1,6 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session
 import os
-from google_sheet import save_booking
+from google_sheet import (
+    save_booking,
+    get_room_by_date,
+    normalize_date,
+    is_room_available,
+    subtract_rooms
+)
 import google.generativeai as genai
 
 app = Flask(__name__)
@@ -9,10 +15,8 @@ app.secret_key = "eden-secret-key"
 # ================== GEMINI ==================
 def ask_gemini(prompt):
     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-
     model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
-
     return response.text.strip()
 
 # ================== DATA ==================
@@ -38,12 +42,27 @@ Tiện ích:
 - Lễ tân 24/7
 - Quầy bar trên cao
 - Lê tân xinh đẹp tuyệt trần
+- Xe điện di chuyển quanh khách sạn
+Chính sách đặt cọc:
+
+Để đảm bảo giữ phòng, quý khách vui lòng đặt cọc trước 30% tổng giá trị booking.
+
+Thanh toán:
+- 30% đặt cọc khi xác nhận đặt phòng
+- 70% còn lại thanh toán khi nhận phòng
+
+Chính sách hủy:
+- Hủy trước 24 giờ: hoàn lại 100% tiền cọc
+- Hủy trong vòng 24 giờ: không hoàn cọc
+
+Lưu ý:
+Đặt phòng chỉ được xác nhận sau khi khách sạn nhận được tiền cọc.
 """
 
 # ================== ROUTES ==================
 @app.route("/")
 def home():
-    session.clear()   
+    session.clear()
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
@@ -51,42 +70,85 @@ def chat():
     msg = request.json.get("message", "").strip()
     msg_lower = msg.lower()
 
-    # ===== 1. CHẶN RỖNG =====
     if not msg:
         return jsonify({"reply": "Quý khách vui lòng nhập nội dung 😊"})
 
-    # ===== 2. ĐANG TRONG FLOW ĐẶT PHÒNG =====
+    # ================== CHECK PHÒNG ==================
+    if "còn phòng" in msg_lower or "phòng trống" in msg_lower:
+        session.clear()
+        session["step"] = "check_date"
+        return jsonify({
+            "reply": "Bạn muốn kiểm tra ngày nào? (VD: 20/04/2026)"
+        })
+
+    # ================== FLOW ==================
     if "step" in session:
         step = session["step"]
-        b = session["booking"]
+        b = session.get("booking", {})
 
-        # --- CHECK-IN ---
-        if step == "checkin":
-            b["checkin"] = msg
-            session["step"] = "checkout"
-            return jsonify({
-                "reply": "Vui lòng cho biết ngày trả phòng? (DD/MM/YYYY)"
-            })
+        # ===== CHECK DATE =====
+        if step == "check_date":
+            date = normalize_date(msg)
+            rooms = get_room_by_date(date)
+            session.clear()
 
-        # --- CHECK-OUT ---
-        if step == "checkout":
-            b["checkout"] = msg
-            session["step"] = "room"
+            if not rooms:
+                return jsonify({"reply": "❌ Không có dữ liệu ngày này"})
+
+            msg_text = f"📅 Ngày {date} còn:\n"
+            for r, q in rooms.items():
+                msg_text += f"- {r}: {q} phòng\n"
+
             return jsonify({
-                "reply": "Quý khách chọn loại phòng?",
+                "reply": msg_text,
                 "buttons": [
-                    {"label": "🛏️ Phòng đơn", "value": "Phòng đơn"},
-                    {"label": "🛏️ Phòng đôi", "value": "Phòng đôi"},
-                    {"label": "👑 Suite", "value": "Suite"}
+                    {"label": "👉 Đặt phòng", "value": "đặt phòng"}
                 ]
             })
 
-        # --- ROOM ---
-        if step == "room":
-            b["room"] = msg
-            session["step"] = "guests"
+        # ===== CHECK-IN =====
+        if step == "checkin":
+            b["checkin"] = normalize_date(msg)
+            session["booking"] = b
+            session["step"] = "checkout"
+
             return jsonify({
-                "reply": "Số lượng khách?",
+                "reply": "Ngày trả phòng? (DD/MM/YYYY)"
+            })
+
+        # ===== CHECK-OUT =====
+        if step == "checkout":
+            b["checkout"] = normalize_date(msg)
+
+            rooms = get_room_by_date(b["checkin"])
+            if not rooms:
+                session.clear()
+                return jsonify({"reply": "❌ Không có dữ liệu phòng ngày này"})
+
+            session["booking"] = b
+            session["step"] = "room"
+
+            return jsonify({
+                "reply": "Chọn loại phòng:",
+                "buttons": [
+                    {"label": f"{r} ({q} phòng)", "value": r}
+                    for r, q in rooms.items()
+                ]
+            })
+
+        # ===== ROOM =====
+        if step == "room":
+            rooms = get_room_by_date(b["checkin"])
+
+            if not rooms or rooms.get(msg, 0) <= 0:
+                return jsonify({"reply": "❌ Phòng này đã hết"})
+
+            b["room"] = msg
+            session["booking"] = b
+            session["step"] = "guests"
+
+            return jsonify({
+                "reply": "Số khách?",
                 "buttons": [
                     {"label": "1–2 khách", "value": "1-2"},
                     {"label": "3–4 khách", "value": "3-4"},
@@ -94,50 +156,47 @@ def chat():
                 ]
             })
 
-        # --- GUESTS ---
+        # ===== GUESTS =====
         if step == "guests":
             b["guests"] = msg
+            session["booking"] = b
             session["step"] = "name"
-            return jsonify({
-                "reply": "Quý khách vui lòng cho biết tên?"
-            })
 
-        # --- NAME ---
+            return jsonify({"reply": "Tên của bạn?"})
+
+        # ===== NAME =====
         if step == "name":
             b["name"] = msg
+            session["booking"] = b
             session["step"] = "phone"
-            return jsonify({
-                "reply": "Xin vui lòng cung cấp số điện thoại?"
-            })
 
-        # --- PHONE ---
-        # --- PHONE ---
+            return jsonify({"reply": "Số điện thoại?"})
+
+        # ===== PHONE =====
         if step == "phone":
             b["phone"] = msg
+            session["booking"] = b
             session["step"] = "note"
-            return jsonify({
-                "reply": "Quý khách có ghi chú thêm không? (có thể bỏ qua)",
-                "buttons": [
-                    {"label": "✍️ Hãy ghi ở dưới:", "value": ""},
-                    {"label": "⏭️ Bỏ qua", "value": "skip"}
-        ]
-            })
-        
-        # --- NOTE ---
-        if step == "note":
-            if msg_lower == "skip":
-                b["note"] = "Không có"
-            else:
-                b["note"] = msg
 
+            return jsonify({
+                "reply": "Có ghi chú thêm không?",
+                "buttons": [
+                    {"label": "Bỏ qua", "value": "skip"}
+                ]
+            })
+
+        # ===== NOTE =====
+        if step == "note":
+            b["note"] = "" if msg_lower == "skip" else msg
+            session["booking"] = b
             session["step"] = "confirm"
 
             summary = (
-                "Xác nhận đặt phòng:\n"
+                "📋 Xác nhận đặt phòng:\n"
                 f"- Check-in: {b['checkin']}\n"
                 f"- Check-out: {b['checkout']}\n"
                 f"- Phòng: {b['room']}\n"
-                f"- Số khách: {b['guests']}\n"
+                f"- Khách: {b['guests']}\n"
                 f"- Tên: {b['name']}\n"
                 f"- SĐT: {b['phone']}\n"
                 f"- Ghi chú: {b['note']}"
@@ -151,75 +210,68 @@ def chat():
                 ]
             })
 
-        # --- CONFIRM ---
+        # ===== CONFIRM =====
         if step == "confirm":
             if msg_lower == "confirm":
                 try:
+                    if not is_room_available(
+                        b["checkin"],
+                        b["checkout"],
+                        b["room"]
+                    ):
+                        session.clear()
+                        return jsonify({
+                            "reply": "❌ Phòng đã hết trong khoảng thời gian này"
+                        })
+
                     save_booking(b)
-                    print("✅ Saved booking:", b)
+                    subtract_rooms(
+                        b["checkin"],
+                        b["checkout"],
+                        b["room"]
+                    )
+
                 except Exception as e:
-                    print("❌ SAVE BOOKING ERROR:", e)
-                    return jsonify({
-                        "reply": "❌ Lỗi lưu đặt phòng. Lễ tân sẽ kiểm tra lại."
-                    })
+                    print("ERROR:", e)
+                    return jsonify({"reply": "❌ Lỗi đặt phòng"})
 
                 session.clear()
                 return jsonify({
-                    "reply": "🎉 Đặt phòng thành công! Lễ tân sẽ liên hệ sớm."
+                    "reply": "🎉 Đặt phòng thành công!"
                 })
-
 
             if msg_lower == "cancel":
                 session.clear()
                 return jsonify({
-                    "reply": "❌ Đặt phòng đã được hủy."
+                    "reply": "❌ Đã hủy đặt phòng"
                 })
 
-            # ❗ gõ linh tinh → nhắc lại
-            return jsonify({
-                "reply": "Quý khách vui lòng chọn ✅ Xác nhận hoặc ❌ Hủy.",
-                "buttons": [
-                    {"label": "✅ Xác nhận", "value": "confirm"},
-                    {"label": "❌ Hủy", "value": "cancel"}
-                ]
-            })
-
-
-    # ===== 3. CHỈ GÕ 'đặt phòng' MỚI BẮT ĐẦU BOOKING =====
-    if msg_lower in [
-        "đặt phòng", "dat phong", "booking", "book",
-        "tôi muốn đặt phòng", "toi muon dat phong","cho tôi đặt phòng","cho toi dat phong","Đặt phòng", "Dat phong", "Booking", "Book",
-        "Tôi muốn đặt phòng", "Toi muon dat phong","Cho tôi đặt phòng","Cho toi dat phong"
-    ]:
+    # ================== START BOOKING ==================
+    if msg_lower in ["đặt phòng", "dat phong", "booking", "book"]:
         session.clear()
         session["step"] = "checkin"
         session["booking"] = {}
 
         return jsonify({
-            "reply": "Quý khách vui lòng cho biết ngày nhận phòng? (DD/MM/YYYY)",
-
+            "reply": "Ngày nhận phòng? (VD: 20/04/2026)"
         })
 
-
-    # ===== 4. TẤT CẢ CÒN LẠI → GEMINI =====
+    # ================== GEMINI ==================
     try:
         reply = ask_gemini(f"""
-Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.
-Trả lời lịch sự, ngắn gọn, tiếng Việt.
-Muốn đặt phòng bắt buộc phải ghi đúng mỗi chữ 'đặt phòng'
+Bạn là lễ tân khách sạn EDEN.
+Trả lời ngắn gọn, lịch sự.
 
-Thông tin khách sạn:
 {HOTEL_INFO}
 
 Khách hỏi: {msg}
 """)
-
         return jsonify({"reply": reply})
 
     except Exception as e:
         print("Gemini error:", e)
         return jsonify({
-            "reply": "Xin lỗi quý khách, hệ thống đang bận \nQuý khách có thể thử lại sau."
+            "reply": "Hệ thống đang bận, vui lòng thử lại sau."
         })
 
 # ================== RUN ==================
