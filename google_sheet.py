@@ -41,7 +41,7 @@ def save_booking(data):
     creds = get_credentials()
     client = gspread.authorize(creds)
 
-    sheet = client.open("EDEN Bookings").Bookings
+    sheet = client.open("EDEN Bookings").worksheet("Bookings")
 
     sheet.append_row([
         data.get("checkin"),
