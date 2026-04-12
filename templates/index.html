@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Regent Phu Quoc</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
@@ -15,27 +16,22 @@ header {
   position: fixed;
   top: 0;
   width: 100%;
-  padding: 20px 40px;
+  padding: 16px 20px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
   color: white;
   z-index: 10;
 }
 
 .logo {
   font-family: 'Playfair Display', serif;
-  font-size: 34px;
-  letter-spacing: 4px;
-  line-height: 1;
+  font-size: 26px;
 }
 
 .logo span {
   display: block;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 12px;
-  letter-spacing: 5px;
-  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 3px;
 }
 
 /* ===== HERO ===== */
@@ -50,62 +46,63 @@ header {
 }
 
 .hero-box {
-  padding: 50px 70px;
-  background: rgba(0,0,0,0.38);
-  border: 1px solid rgba(255,255,255,0.35);
-  backdrop-filter: blur(8px);
+  padding: 30px;
+  background: rgba(0,0,0,0.45);
   border-radius: 14px;
+  backdrop-filter: blur(10px);
 }
 
 .hero h1 {
   font-family: 'Playfair Display', serif;
-  font-size: 48px;
-  letter-spacing: 4px;
-  line-height: 1.35;
-  margin-bottom: 30px;
+  font-size: 28px;
+  line-height: 1.4;
 }
 
 .hero button {
-  padding: 14px 32px;
+  margin-top: 20px;
+  padding: 12px 26px;
   background: #8a5a00;
   border: none;
   color: white;
-  letter-spacing: 2px;
   cursor: pointer;
 }
 
 /* ===== CHAT ===== */
 #chat-widget {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 99;
+  bottom: 16px;
+  right: 16px;
+  z-index: 999;
 }
 
 #chat-btn {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: none;
-  font-size: 26px;
+  font-size: 24px;
   cursor: pointer;
-  background: rgba(0,0,0,0.6);
+  background: #8a5a00;
   color: white;
 }
 
+/* CHAT BOX */
 #chat-box {
   display: none;
   flex-direction: column;
-  width: 320px;
-  height: 420px;
+  width: 95vw;
+  max-width: 340px;
+  height: 70vh;
+  max-height: 500px;
   margin-bottom: 10px;
   border-radius: 16px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.75);
   backdrop-filter: blur(10px);
   color: white;
   overflow: hidden;
 }
 
+/* MESSAGES */
 #messages {
   flex: 1;
   padding: 10px;
@@ -114,18 +111,33 @@ header {
 }
 
 .msg {
-  white-space: pre-line;
   margin-bottom: 10px;
   line-height: 1.5;
+  white-space: pre-line;
 }
 
-.typing {
-  font-style: italic;
-  opacity: 0.7;
+/* BUTTON GROUP */
+.btn-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 5px 0 10px;
 }
 
+.quick-btn {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: none;
+  background: #8a5a00;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* INPUT */
 #input {
   display: flex;
+  border-top: 1px solid rgba(255,255,255,0.2);
 }
 
 #input input {
@@ -136,11 +148,15 @@ header {
 }
 
 #input button {
-  padding: 10px 14px;
+  padding: 10px;
   border: none;
   background: #8a5a00;
   color: white;
-  cursor: pointer;
+}
+
+/* MOBILE FIX */
+@media (max-width: 500px) {
+  .hero h1 { font-size: 22px; }
 }
 </style>
 </head>
@@ -149,21 +165,16 @@ header {
 
 <header>
   <div class="logo">REGENT<span>PHU QUOC</span></div>
-  <div class="menu">MENU</div>
 </header>
 
 <section class="hero">
   <div class="hero-box">
-    <h1>
-      HÃY TRẢI NGHIỆM SỰ TỰ DO<br>
-      VÀ ĐỂ TRÍ TƯỞNG TƯỢNG<br>
-      BAY CAO
-    </h1>
-    <button>ĐẶT PHÒNG NGAY</button>
+    <h1>TRẢI NGHIỆM KỲ NGHỈ ĐẲNG CẤP</h1>
+    <button onclick="openChat()">ĐẶT PHÒNG</button>
   </div>
 </section>
 
-<!-- ===== CHATBOT ===== -->
+<!-- CHAT -->
 <div id="chat-widget">
   <button id="chat-btn">💬</button>
 
@@ -177,7 +188,6 @@ header {
   </div>
 </div>
 
-
 <script>
 const chatBtn = document.getElementById("chat-btn");
 const chatBox = document.getElementById("chat-box");
@@ -186,51 +196,46 @@ const input = document.getElementById("text");
 
 let greeted = false;
 
-/* ===== TOGGLE CHAT ===== */
-chatBtn.onclick = () => {
-  const isOpen = chatBox.style.display === "flex";
-  chatBox.style.display = isOpen ? "none" : "flex";
+/* OPEN CHAT */
+function openChat(){
+  chatBox.style.display = "flex";
+}
 
-  if (!isOpen && !greeted) {
-    addMessage(
-      "REGENT",
-      "Chào quý khách.\nTôi là lễ tân khách sạn Regent Phú Quốc.\nTôi có thể hỗ trợ quý khách điều gì ạ?.\nChúng tôi có hỗ trợ khi gõ từ khóa 'đặt phòng' ở đây!"
-    );
+/* TOGGLE */
+chatBtn.onclick = () => {
+  chatBox.style.display =
+    chatBox.style.display === "flex" ? "none" : "flex";
+
+  if (!greeted) {
     greeted = true;
+    addMessage("REGENT",
+`Chào quý khách
+Tôi là lễ tân Regent Phú Quốc
+Quý khách có thể gõ "đặt phòng" để bắt đầu`,
+    [
+      {label:"📅 Đặt phòng", value:"đặt phòng"},
+      {label:"💰 Giá phòng", value:"giá phòng"},
+      {label:"🏨 Tiện ích", value:"tiện ích"}
+    ]);
   }
 };
 
-/* ===== ENTER TO SEND ===== */
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
-});
-
-/* ===== ADD MESSAGE + BUTTON ===== */
-function addMessage(sender, text, buttons = []) {
-  const msg = document.createElement("div");
-  msg.className = "msg";
-  msg.style.whiteSpace = "pre-line";
-  msg.innerHTML = `<b>${sender}:</b>\n${text}`;
-  messages.appendChild(msg);
+/* ADD MESSAGE */
+function addMessage(sender, text, buttons=[]) {
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.innerHTML = `<b>${sender}:</b><br>${text}`;
+  messages.appendChild(div);
 
   if (buttons.length > 0) {
     const wrap = document.createElement("div");
-    wrap.style.display = "flex";
-    wrap.style.flexWrap = "wrap";
-    wrap.style.gap = "8px";
-    wrap.style.margin = "6px 0 12px";
+    wrap.className = "btn-wrap";
 
-    buttons.forEach(b => {
+    buttons.forEach(b=>{
       const btn = document.createElement("button");
-      btn.textContent = b.label;
-      btn.style.padding = "6px 14px";
-      btn.style.borderRadius = "18px";
-      btn.style.border = "none";
-      btn.style.cursor = "pointer";
-      btn.style.background = "#8a5a00";
-      btn.style.color = "white";
-
-      btn.onclick = () => send(b.value);
+      btn.className = "quick-btn";
+      btn.innerText = b.label;
+      btn.onclick = ()=>send(b.value);
       wrap.appendChild(btn);
     });
 
@@ -240,25 +245,29 @@ function addMessage(sender, text, buttons = []) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-/* ===== SEND ===== */
-async function send(textOverride = null) {
+/* SEND */
+async function send(textOverride=null){
   const text = textOverride || input.value.trim();
-  if (!text) return;
+  if(!text) return;
 
   addMessage("Bạn", text);
   input.value = "";
 
-  const res = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: text })
+  const res = await fetch("/chat",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:text})
   });
 
   const data = await res.json();
   addMessage("REGENT", data.reply, data.buttons || []);
 }
-</script>
 
+/* ENTER */
+input.addEventListener("keydown", e=>{
+  if(e.key==="Enter") send();
+});
+</script>
 
 </body>
 </html>
