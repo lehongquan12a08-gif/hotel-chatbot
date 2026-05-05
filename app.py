@@ -5,7 +5,9 @@ from google_sheet import (
     get_room_by_date,
     normalize_date,
     is_room_available,
-    subtract_rooms
+    subtract_rooms,
+    get_hotel_config,   # 👈 Mới
+    build_hotel_info    # 👈 Mới
 )
 import google.generativeai as genai
 
@@ -19,45 +21,25 @@ def ask_gemini(prompt):
     response = model.generate_content(prompt)
     return response.text.strip()
 
-# ================== DATA ==================
-HOTEL_INFO = """
+# ================== HOTEL INFO (dynamic) ==================
+# Fallback nếu Google Sheet lỗi
+HOTEL_INFO_FALLBACK = """
 Tên khách sạn: EDEN Regent Phu Quoc
 Địa chỉ: Phú Quốc
 Hotline: 0123 456 789
-
-Giá phòng:
-- Phòng đơn: 800.000đ / đêm
-- Phòng đôi: 1.200.000đ / đêm
-- Phòng Suite: 2.000.000đ / đêm
-
-Check-in: 14:00
-Check-out: 12:00
-
-Tiện ích:
-- Hồ bơi ngoài trời
-- Phòng gym
-- Spa
-- Nhà hàng
-- Wi-Fi miễn phí
-- Lễ tân 24/7
-- Quầy bar trên cao
-- Lê tân xinh đẹp tuyệt trần
-- Xe điện di chuyển quanh khách sạn
-Chính sách đặt cọc:
-
-Để đảm bảo giữ phòng, quý khách vui lòng đặt cọc trước 30% tổng giá trị booking.
-
-Thanh toán:
-- 30% đặt cọc khi xác nhận đặt phòng
-- 70% còn lại thanh toán khi nhận phòng
-
-Chính sách hủy:
-- Hủy trước 24 giờ: hoàn lại 100% tiền cọc
-- Hủy trong vòng 24 giờ: không hoàn cọc
-
-Lưu ý:
-Đặt phòng chỉ được xác nhận sau khi khách sạn nhận được tiền cọc.
+Giá phòng: Phòng đơn 800.000đ, Phòng đôi 1.200.000đ, Suite 2.000.000đ
+Check-in: 14:00 | Check-out: 12:00
 """
+
+def get_hotel_info():
+    """Đọc thông tin khách sạn từ Google Sheet Config. Fallback nếu lỗi."""
+    try:
+        config = get_hotel_config()
+        if config:
+            return build_hotel_info(config)
+    except Exception as e:
+        print("⚠️ Không đọc được Config sheet:", e)
+    return HOTEL_INFO_FALLBACK
 
 # ================== ROUTES ==================
 @app.route("/")
@@ -111,16 +93,13 @@ def chat():
             b["checkin"] = normalize_date(msg)
             session["booking"] = b
             session["step"] = "checkout"
-
-            return jsonify({
-                "reply": "Ngày trả phòng? (DD/MM/YYYY)"
-            })
+            return jsonify({"reply": "Ngày trả phòng? (DD/MM/YYYY)"})
 
         # ===== CHECK-OUT =====
         if step == "checkout":
             b["checkout"] = normalize_date(msg)
-
             rooms = get_room_by_date(b["checkin"])
+
             if not rooms:
                 session.clear()
                 return jsonify({"reply": "❌ Không có dữ liệu phòng ngày này"})
@@ -161,7 +140,6 @@ def chat():
             b["guests"] = msg
             session["booking"] = b
             session["step"] = "name"
-
             return jsonify({"reply": "Tên của bạn?"})
 
         # ===== NAME =====
@@ -169,7 +147,6 @@ def chat():
             b["name"] = msg
             session["booking"] = b
             session["step"] = "phone"
-
             return jsonify({"reply": "Số điện thoại?"})
 
         # ===== PHONE =====
@@ -177,12 +154,9 @@ def chat():
             b["phone"] = msg
             session["booking"] = b
             session["step"] = "note"
-
             return jsonify({
                 "reply": "Có ghi chú thêm không?",
-                "buttons": [
-                    {"label": "Bỏ qua", "value": "skip"}
-                ]
+                "buttons": [{"label": "Bỏ qua", "value": "skip"}]
             })
 
         # ===== NOTE =====
@@ -214,55 +188,42 @@ def chat():
         if step == "confirm":
             if msg_lower == "confirm":
                 try:
-                    if not is_room_available(
-                        b["checkin"],
-                        b["checkout"],
-                        b["room"]
-                    ):
+                    if not is_room_available(b["checkin"], b["checkout"], b["room"]):
                         session.clear()
                         return jsonify({
                             "reply": "❌ Phòng đã hết trong khoảng thời gian này"
                         })
 
                     save_booking(b)
-                    subtract_rooms(
-                        b["checkin"],
-                        b["checkout"],
-                        b["room"]
-                    )
+                    subtract_rooms(b["checkin"], b["checkout"], b["room"])
 
                 except Exception as e:
                     print("ERROR:", e)
                     return jsonify({"reply": "❌ Lỗi đặt phòng"})
 
                 session.clear()
-                return jsonify({
-                    "reply": "🎉 Đặt phòng thành công!"
-                })
+                return jsonify({"reply": "🎉 Đặt phòng thành công!"})
 
             if msg_lower == "cancel":
                 session.clear()
-                return jsonify({
-                    "reply": "❌ Đã hủy đặt phòng"
-                })
+                return jsonify({"reply": "❌ Đã hủy đặt phòng"})
 
     # ================== START BOOKING ==================
     if msg_lower in ["đặt phòng", "dat phong", "booking", "book"]:
         session.clear()
         session["step"] = "checkin"
         session["booking"] = {}
+        return jsonify({"reply": "Ngày nhận phòng? (VD: 20/04/2026)"})
 
-        return jsonify({
-            "reply": "Ngày nhận phòng? (VD: 20/04/2026)"
-        })
-
-    # ================== GEMINI ==================
+    # ================== GEMINI (với hotel info từ Sheet) ==================
     try:
+        hotel_info = get_hotel_info()  # 👈 Đọc real-time từ Google Sheet
+
         reply = ask_gemini(f"""
 Bạn là lễ tân khách sạn EDEN.
 Trả lời ngắn gọn, lịch sự.
 
-{HOTEL_INFO}
+{hotel_info}
 
 Khách hỏi: {msg}
 """)

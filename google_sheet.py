@@ -11,12 +11,12 @@ SCOPES = [
 SPREADSHEET_NAME = "EDEN Bookings"
 ROOM_SHEET = "Rooms"
 BOOKING_SHEET = "Bookings"
+CONFIG_SHEET = "Config"  # 👈 Sheet mới
 
 DATE_FORMAT = "%d/%m/%Y"
 
 # ================= AUTH =================
 def get_credentials():
-    # 👉 Render ENV
     if "GOOGLE_SERVICE_ACCOUNT_JSON" in os.environ:
         service_account_info = json.loads(
             os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
@@ -25,10 +25,8 @@ def get_credentials():
             service_account_info, scopes=SCOPES
         )
 
-    # 👉 Local file
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(BASE_DIR, "service_account.json")
-
     return Credentials.from_service_account_file(path, scopes=SCOPES)
 
 
@@ -42,6 +40,71 @@ def get_room_sheet():
 
 def get_booking_sheet():
     return get_client().open(SPREADSHEET_NAME).worksheet(BOOKING_SHEET)
+
+
+def get_config_sheet():
+    return get_client().open(SPREADSHEET_NAME).worksheet(CONFIG_SHEET)
+
+# ================= HOTEL CONFIG =================
+def get_hotel_config():
+    """
+    Đọc sheet Config và trả về dict {key: value}.
+    Sheet Config có 2 cột: key | value
+    """
+    try:
+        sheet = get_config_sheet()
+        records = sheet.get_all_records()
+
+        config = {}
+        for row in records:
+            row = clean_row(row)
+            key = str(row.get("key", "")).strip()
+            value = str(row.get("value", "")).strip()
+            if key:
+                config[key] = value
+
+        return config
+
+    except Exception as e:
+        print("❌ get_hotel_config:", e)
+        return {}
+
+
+def build_hotel_info(config):
+    """
+    Xây dựng chuỗi HOTEL_INFO từ config dict để truyền vào AI prompt.
+    """
+    def g(key, default=""):
+        return config.get(key, default)
+
+    return f"""
+Tên khách sạn: {g("hotel_name")}
+Địa chỉ: {g("address")}
+Hotline: {g("hotline")}
+
+Giá phòng:
+- Phòng đơn: {g("price_single")} / đêm
+- Phòng đôi: {g("price_double")} / đêm
+- Phòng Suite: {g("price_suite")} / đêm
+
+Check-in: {g("checkin_time")}
+Check-out: {g("checkout_time")}
+
+Tiện ích:
+{g("amenities")}
+
+Chính sách đặt cọc:
+{g("deposit_policy")}
+
+Thanh toán:
+{g("payment_policy")}
+
+Chính sách hủy:
+{g("cancel_policy")}
+
+Lưu ý:
+{g("note")}
+""".strip()
 
 # ================= UTILS =================
 def normalize_date(date_str):
@@ -80,7 +143,6 @@ def get_room_by_date(date):
     try:
         sheet = get_room_sheet()
         records = sheet.get_all_records()
-
         input_date = normalize_date(date)
 
         for row in records:
@@ -104,7 +166,6 @@ def get_room_by_date(date):
 def is_room_available(checkin, checkout, room_type):
     try:
         room_type = normalize_room_type(room_type)
-
         start = datetime.strptime(normalize_date(checkin), DATE_FORMAT)
         end = datetime.strptime(normalize_date(checkout), DATE_FORMAT)
 
@@ -134,16 +195,13 @@ def update_room_after_booking(date, room_type):
 
         for i, row in enumerate(records, start=2):
             row = clean_row(row)
-
             sheet_date = normalize_date(row.get("date"))
 
             if sheet_date == date:
                 current = int(row.get(room_type, 0))
                 new_value = max(current - 1, 0)
-
                 col_index = list(row.keys()).index(room_type) + 1
                 sheet.update_cell(i, col_index, new_value)
-
                 print(f"📉 {room_type} {date}: {current} → {new_value}")
                 return
 
@@ -153,15 +211,11 @@ def update_room_after_booking(date, room_type):
 # ================= TRỪ NHIỀU NGÀY =================
 def subtract_rooms(checkin, checkout, room_type):
     room_type = normalize_room_type(room_type)
-
     start = datetime.strptime(normalize_date(checkin), DATE_FORMAT)
     end = datetime.strptime(normalize_date(checkout), DATE_FORMAT)
 
     while start < end:
-        update_room_after_booking(
-            start.strftime(DATE_FORMAT),
-            room_type
-        )
+        update_room_after_booking(start.strftime(DATE_FORMAT), room_type)
         start += timedelta(days=1)
 
 # ================= SAVE BOOKING =================
