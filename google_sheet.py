@@ -37,6 +37,33 @@ def get_credentials():
     )
 
 
+def get_hotel_config():
+    creds = get_credentials()
+    client = gspread.authorize(creds)
+    sheet = client.open("EDEN Bookings").worksheet("Config")
+    records = sheet.get_all_records()
+    return {row["key"]: row["value"] for row in records}
+
+
+def build_hotel_info(config):
+    return f"""
+Tên khách sạn: {config.get("hotel_name", "")}
+Địa chỉ: {config.get("address", "")}
+Hotline: {config.get("hotline", "")}
+
+Giá phòng:
+- Phòng đơn: {config.get("price_single", "")} / đêm
+- Phòng đôi: {config.get("price_double", "")} / đêm
+- Phòng Suite: {config.get("price_suite", "")} / đêm
+
+Check-in: {config.get("checkin_time", "")}
+Check-out: {config.get("checkout_time", "")}
+
+Tiện ích:
+{config.get("amenities", "")}
+""".strip()
+
+
 def save_booking(data):
     creds = get_credentials()
     client = gspread.authorize(creds)
