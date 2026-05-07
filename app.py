@@ -2,30 +2,17 @@ from flask import Flask, render_template, request, jsonify, session
 import os
 from google_sheet import save_booking
 
-from openai import OpenAI
+import google.generativeai as genai
 
 app = Flask(__name__)
 app.secret_key = "eden-secret-key"
 
 # ================== GEMINI ==================
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
-)
-
-def ask_ai(prompt):
-
-    response = client.chat.completions.create(
-        model="gpt-5-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0.7
-    )
-
-    return response.choices[0].message.content.strip()
+def ask_gemini(prompt):
+    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+    model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
 
 # ================== DATA ==================
@@ -216,7 +203,7 @@ def chat():
 
     # ===== 4. TẤT CẢ CÒN LẠI → GEMINI =====
     try:
-        reply = ask_ai(f"""
+        reply = ask_gemini(f"""
 Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.
 Trả lời lịch sự, ngắn gọn, tiếng Việt.
 Muốn đặt phòng bắt buộc phải ghi đúng mỗi chữ 'đặt phòng'
@@ -230,7 +217,7 @@ Khách hỏi: {msg}
         return jsonify({"reply": reply})
 
     except Exception as e:
-        print("OpenAI error:", e)
+        print("Gemini error:", e)
         return jsonify({
             "reply": "Xin lỗi quý khách, hệ thống đang bận \nQuý khách có thể thử lại sau."
         })
