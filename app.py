@@ -20,23 +20,11 @@ def ask_gemini(prompt):
 
 
 # ================== DATA ==================
-HOTEL_INFO = """
+HOTEL_INFO_FALLBACK = """
 Tên khách sạn: EDEN Regent Phu Quoc
-Địa chỉ: Phú Quốc
-Hotline: 0123 456 789
-
-Check-in: 14:00
-Check-out: 12:00
-
-Tiện ích:
-- Hồ bơi ngoài trời
-- Phòng gym
-- Spa
-- Nhà hàng
-- Wi-Fi miễn phí
-- Lễ tân 24/7
-- Quầy bar trên cao
-- Lê tân xinh đẹp tuyệt trần
+Địa chỉ: Phú Quốc | Hotline: 0123 456 789
+Giá: Phòng đơn 800.000đ, Phòng đôi 1.200.000đ, Suite 2.000.000đ
+Check-in: 14:00 | Check-out: 12:00
 """
 def get_hotel_info():
     try:
@@ -45,7 +33,8 @@ def get_hotel_info():
             return build_hotel_info(config)
     except Exception as e:
         print("⚠️ Config sheet error:", e)
-    return HOTEL_INFO
+    return HOTEL_INFO_FALLBACK
+
 # ================== ROUTES ==================
 @app.route("/")
 def home():
@@ -66,15 +55,11 @@ def chat():
         step = session["step"]
         b = session["booking"]
 
-        # --- CHECK-IN ---
         if step == "checkin":
             b["checkin"] = msg
             session["step"] = "checkout"
-            return jsonify({
-                "reply": "Vui lòng cho biết ngày trả phòng? (DD/MM/YYYY)"
-            })
+            return jsonify({"reply": "Vui lòng cho biết ngày trả phòng? (DD/MM/YYYY)"})
 
-        # --- CHECK-OUT ---
         if step == "checkout":
             b["checkout"] = msg
             session["step"] = "room"
@@ -87,7 +72,6 @@ def chat():
                 ]
             })
 
-        # --- ROOM ---
         if step == "room":
             b["room"] = msg
             session["step"] = "guests"
@@ -100,24 +84,16 @@ def chat():
                 ]
             })
 
-        # --- GUESTS ---
         if step == "guests":
             b["guests"] = msg
             session["step"] = "name"
-            return jsonify({
-                "reply": "Quý khách vui lòng cho biết tên?"
-            })
+            return jsonify({"reply": "Quý khách vui lòng cho biết tên?"})
 
-        # --- NAME ---
         if step == "name":
             b["name"] = msg
             session["step"] = "phone"
-            return jsonify({
-                "reply": "Xin vui lòng cung cấp số điện thoại?"
-            })
+            return jsonify({"reply": "Xin vui lòng cung cấp số điện thoại?"})
 
-        # --- PHONE ---
-        # --- PHONE ---
         if step == "phone":
             b["phone"] = msg
             session["step"] = "note"
@@ -126,10 +102,9 @@ def chat():
                 "buttons": [
                     {"label": "✍️ Hãy ghi ở dưới:", "value": ""},
                     {"label": "⏭️ Bỏ qua", "value": "skip"}
-        ]
+                ]
             })
-        
-        # --- NOTE ---
+
         if step == "note":
             if msg_lower == "skip":
                 b["note"] = "Không có"
@@ -157,7 +132,6 @@ def chat():
                 ]
             })
 
-        # --- CONFIRM ---
         if step == "confirm":
             if msg_lower == "confirm":
                 try:
@@ -165,23 +139,15 @@ def chat():
                     print("✅ Saved booking:", b)
                 except Exception as e:
                     print("❌ SAVE BOOKING ERROR:", e)
-                    return jsonify({
-                        "reply": "❌ Lỗi lưu đặt phòng. Lễ tân sẽ kiểm tra lại."
-                    })
+                    return jsonify({"reply": "❌ Lỗi lưu đặt phòng. Lễ tân sẽ kiểm tra lại."})
 
                 session.clear()
-                return jsonify({
-                    "reply": "🎉 Đặt phòng thành công! Lễ tân sẽ liên hệ sớm."
-                })
-
+                return jsonify({"reply": "🎉 Đặt phòng thành công! Lễ tân sẽ liên hệ sớm."})
 
             if msg_lower == "cancel":
                 session.clear()
-                return jsonify({
-                    "reply": "❌ Đặt phòng đã được hủy."
-                })
+                return jsonify({"reply": "❌ Đặt phòng đã được hủy."})
 
-            # ❗ gõ linh tinh → nhắc lại
             return jsonify({
                 "reply": "Quý khách vui lòng chọn ✅ Xác nhận hoặc ❌ Hủy.",
                 "buttons": [
@@ -190,37 +156,31 @@ def chat():
                 ]
             })
 
-
-    # ===== 3. CHỈ GÕ 'đặt phòng' MỚI BẮT ĐẦU BOOKING =====
+    # ===== 3. BẮT ĐẦU BOOKING =====
     if msg_lower in [
         "đặt phòng", "dat phong", "booking", "book",
-        "tôi muốn đặt phòng", "toi muon dat phong","cho tôi đặt phòng","cho toi dat phong","Đặt phòng", "Dat phong", "Booking", "Book",
-        "Tôi muốn đặt phòng", "Toi muon dat phong","Cho tôi đặt phòng","Cho toi dat phong"
+        "tôi muốn đặt phòng", "toi muon dat phong", "cho tôi đặt phòng", "cho toi dat phong",
+        "đặt phòng", "dat phong", "booking", "book",
+        "tôi muốn đặt phòng", "toi muon dat phong", "cho tôi đặt phòng", "cho toi dat phong"
     ]:
         session.clear()
         session["step"] = "checkin"
         session["booking"] = {}
-
-        return jsonify({
-            "reply": "Quý khách vui lòng cho biết ngày nhận phòng? (DD/MM/YYYY)",
-
-        })
-
+        return jsonify({"reply": "Quý khách vui lòng cho biết ngày nhận phòng? (DD/MM/YYYY)"})
 
     # ===== 4. TẤT CẢ CÒN LẠI → GEMINI =====
     try:
-        hotel_info = get_hotel_info()
+        hotel_info = get_hotel_info()  # ✅ đọc từ sheet
         reply = ask_gemini(f"""
 Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.
 Trả lời lịch sự, ngắn gọn, tiếng Việt.
 Muốn đặt phòng bắt buộc phải ghi đúng mỗi chữ 'đặt phòng'
 
 Thông tin khách sạn:
-{HOTEL_INFO}
+{hotel_info}
 
 Khách hỏi: {msg}
 """)
-
         return jsonify({"reply": reply})
 
     except Exception as e:
