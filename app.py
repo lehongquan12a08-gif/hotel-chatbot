@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session
 import os
-from google_sheet import from google_sheet import (
+from google_sheet import (
     save_booking,
     get_hotel_config,
     build_hotel_info
