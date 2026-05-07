@@ -9,8 +9,8 @@ app.secret_key = "eden-secret-key"
 
 # ================== GEMINI ==================
 def ask_gemini(prompt):
-    genai.configure(api_key=os.environ.get("AIzaSyA_rWjQQzZrhqpo3KNzeCEvMtMm5fDqKEs"))
-    model = genai.GenerativeModel("gemini-2.5b-flash")
+    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
     return response.text.strip()
 
