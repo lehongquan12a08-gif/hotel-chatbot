@@ -9,6 +9,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
+SPREADSHEET_NAME = "EDEN Bookings"
+ROOM_SHEET       = "Rooms"
+BOOKING_SHEET    = "Bookings"
+CONFIG_SHEET     = "Config"
+
 def get_credentials():
     # ===== 1. ENV (Render) =====
     if "GOOGLE_SERVICE_ACCOUNT_JSON" in os.environ:
@@ -37,10 +42,21 @@ def get_credentials():
     )
 
 
+def get_client():
+    return gspread.authorize(get_credentials())
+
+def get_room_sheet():
+    return get_client().open(SPREADSHEET_NAME).worksheet(ROOM_SHEET)
+
+def get_booking_sheet():
+    return get_client().open(SPREADSHEET_NAME).worksheet(BOOKING_SHEET)
+
+def get_config_sheet():
+    return get_client().open(SPREADSHEET_NAME).worksheet(CONFIG_SHEET)
+
+
 def get_hotel_config():
-    creds = get_credentials()
-    client = gspread.authorize(creds)
-    sheet = client.open("EDEN Bookings").worksheet("Config")
+    sheet = get_config_sheet()
     records = sheet.get_all_records()
     return {row["key"]: row["value"] for row in records}
 
@@ -65,11 +81,7 @@ Tiện ích:
 
 
 def save_booking(data):
-    creds = get_credentials()
-    client = gspread.authorize(creds)
-
-    sheet = client.open("EDEN Bookings").sheet1
-
+    sheet = get_booking_sheet()
     sheet.append_row([
         data.get("checkin"),
         data.get("checkout"),
