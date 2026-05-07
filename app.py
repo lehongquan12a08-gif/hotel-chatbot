@@ -1,6 +1,10 @@
 from flask import Flask, render_template, request, jsonify, session
 import os
-from google_sheet import save_booking
+from google_sheet import from google_sheet import (
+    save_booking,
+    get_hotel_config,
+    build_hotel_info
+)
 
 import google.generativeai as genai
 
@@ -39,7 +43,14 @@ Tiện ích:
 - Quầy bar trên cao
 - Lê tân xinh đẹp tuyệt trần
 """
-
+def get_hotel_info():
+    try:
+        config = get_hotel_config()
+        if config:
+            return build_hotel_info(config)
+    except Exception as e:
+        print("⚠️ Config sheet error:", e)
+    return HOTEL_INFO
 # ================== ROUTES ==================
 @app.route("/")
 def home():
@@ -203,6 +214,7 @@ def chat():
 
     # ===== 4. TẤT CẢ CÒN LẠI → GEMINI =====
     try:
+        hotel_info = get_hotel_info()
         reply = ask_gemini(f"""
 Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.
 Trả lời lịch sự, ngắn gọn, tiếng Việt.
