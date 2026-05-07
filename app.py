@@ -25,11 +25,6 @@ Tên khách sạn: EDEN Regent Phu Quoc
 Địa chỉ: Phú Quốc
 Hotline: 0123 456 789
 
-Giá phòng:
-- Phòng đơn: 800.000đ / đêm
-- Phòng đôi: 1.200.000đ / đêm
-- Phòng Suite: 2.000.000đ / đêm
-
 Check-in: 14:00
 Check-out: 12:00
 
