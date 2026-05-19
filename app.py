@@ -133,15 +133,24 @@ def detect_lang(text, default="vi"):
     return default
 
 def resolve_lang(client_lang, message):
+    # Đảm bảo client_lang hợp lệ
     client_lang = client_lang if client_lang in ("vi", "en") else "vi"
-    if len(message.strip()) < 4:
+    
+    # Nếu tin nhắn quá ngắn (dưới 4 ký tự hoặc chỉ là 1-2 từ đơn), 
+    # giữ nguyên ngôn ngữ hiện tại của client/session
+    words = re.findall(r"[a-z0-9àáạảã...]+", message.lower()) # liệt kê đủ ký tự
+    if len(message.strip()) < 4 or len(words) <= 2:
         return client_lang
+
+    # Chỉ chuyển sang tiếng Việt nếu có dấu đặc trưng và tin nhắn đủ dài
     if VI_DIACRITICS.search(message):
         return "vi"
-    words = re.findall(r"[a-zA-Z]+", message.lower())
+
+    # Chỉ chuyển sang tiếng Anh nếu có từ khóa đặc trưng rõ rệt
     en_hits = sum(1 for w in words if w in EN_KEYWORDS)
     if en_hits >= 2:
         return "en"
+
     return client_lang
 
 # ================== I18N STRINGS ==================
@@ -307,10 +316,13 @@ def get_room_prices():
 
 def normalize_room(text):
     t_low = text.lower().strip()
+    # Kiểm tra Suite
     if any(k in t_low for k in ["suite", "👑"]):
         return "Suite"
+    # Kiểm tra Double/Phòng đôi
     if any(k in t_low for k in ["đôi", "doi", "double", "🛏🛏"]):
         return "Phòng đôi"
+    # Kiểm tra Single/Phòng đơn
     if any(k in t_low for k in ["đơn", "don", "single", "🛏"]):
         return "Phòng đơn"
     return text
@@ -358,8 +370,8 @@ def chat():
                 "reply": tr(lang, "ask_room"),
                 "lang": lang,
                 "buttons": [
-                    {"label": tr(lang, "btn_single"), "value": "Phòng đơn"},
-                    {"label": tr(lang, "btn_double"), "value": "Phòng đôi"},
+                    {"label": tr(lang, "btn_single"), "value": "Single"},
+                    {"label": tr(lang, "btn_double"), "value": "Double"},
                     {"label": tr(lang, "btn_suite"),  "value": "Suite"}
                 ]
             })
