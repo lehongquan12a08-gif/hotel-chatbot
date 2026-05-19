@@ -148,14 +148,14 @@ def resolve_lang(client_lang, message):
 T = {
     "vi": {
         "empty": "Quý khách vui lòng nhập nội dung 😊",
-        "ask_checkin": "Ngày nhận phòng? (VD: 20/06/2026)",
-        "ask_checkout": "Ngày trả phòng? (DD/MM/YYYY)",
-        "ask_room": "Chọn loại phòng:",
-        "ask_name": "Tên của quý khách?",
-        "ask_phone": "Số điện thoại liên hệ?",
-        "btn_single": "🛏 Phòng đơn – 800k/đêm",
-        "btn_double": "🛏🛏 Phòng đôi – 1.2tr/đêm",
-        "btn_suite": "👑 Suite – 2tr/đêm",
+        "ask_checkin": "Xin hãy cho biết ngày nhận phòng! (DD/MM/YYYY)",
+        "ask_checkout": "Xin hãy cho biết ngày trả phòng! (DD/MM/YYYY)",
+        "ask_room": "Hãy loại phòng:",
+        "ask_name": "Hãy cho biết tên của quý khách",
+        "ask_phone": "Số điện thoại liên hệ",
+        "btn_single": "🛏 Phòng đơn ",
+        "btn_double": "🛏🛏 Phòng đôi ",
+        "btn_suite": "👑 Suite ",
         "btn_confirm": "✅ Xác nhận đặt phòng",
         "btn_cancel": "❌ Hủy",
         "summary_title": "📋 Xác nhận đặt phòng:",
@@ -176,14 +176,14 @@ T = {
     },
     "en": {
         "empty": "Please type a message 😊",
-        "ask_checkin": "Check-in date? (e.g. 20/06/2026)",
-        "ask_checkout": "Check-out date? (DD/MM/YYYY)",
+        "ask_checkin": "Check-in date (DD/MM/YYYY)",
+        "ask_checkout": "Check-out date (DD/MM/YYYY)",
         "ask_room": "Choose a room type:",
         "ask_name": "Your name, please?",
         "ask_phone": "Contact phone number?",
-        "btn_single": "🛏 Single – 800k/night",
-        "btn_double": "🛏🛏 Double – 1.2M/night",
-        "btn_suite": "👑 Suite – 2M/night",
+        "btn_single": "🛏 Single ",
+        "btn_double": "🛏🛏 Double ",
+        "btn_suite": "👑 Suite ",
         "btn_confirm": "✅ Confirm booking",
         "btn_cancel": "❌ Cancel",
         "summary_title": "📋 Booking confirmation:",
@@ -255,13 +255,31 @@ Note:
 """.strip()
 
 
-def get_hotel_info(lang):
-    """Load the Config sheet on demand and build the info string in the requested language."""
+def _expand_newlines(config):
+    """Convert literal '\\n' (and '\\r\\n') in cell values to real newlines.
+    Lets the user type "\\n" inside a Google Sheet cell instead of Alt+Enter."""
+    out = {}
+    for k, v in (config or {}).items():
+        if isinstance(v, str):
+            out[k] = v.replace("\\r\\n", "\n").replace("\\n", "\n")
+        else:
+            out[k] = v
+    return out
+
+
+def _load_config():
+    """Get the Config sheet as a dict, with \\n expanded to real newlines."""
     try:
-        config = get_hotel_config() or {}
+        raw = get_hotel_config() or {}
     except Exception as e:
         print("WARN: get_hotel_config failed:", e)
-        config = {}
+        raw = {}
+    return _expand_newlines(raw)
+
+
+def get_hotel_info(lang):
+    """Load the Config sheet on demand and build the info string in the requested language."""
+    config = _load_config()
     if lang == "en":
         return build_hotel_info_en(config)
     return _build_hotel_info_vi(config)
@@ -282,9 +300,9 @@ def get_room_prices():
     except Exception:
         config = {}
     return {
-        "Phòng đơn": parse_price(config.get("price_single")) or 800000,
-        "Phòng đôi": parse_price(config.get("price_double")) or 1200000,
-        "Suite":     parse_price(config.get("price_suite"))  or 2000000,
+        "Phòng đơn": parse_price(config.get("price_single")) ,
+        "Phòng đôi": parse_price(config.get("price_double")) ,
+        "Suite":     parse_price(config.get("price_suite")),
     }
 
 def normalize_room(text):
