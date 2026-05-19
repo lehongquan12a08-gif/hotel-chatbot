@@ -3,38 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Regent Phu Quoc</title>
+<title>EDEN Regent Phu Quoc</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
 
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Montserrat', sans-serif; }
 
-/* ===== HEADER ===== */
 header {
   position: fixed;
   top: 0;
   width: 100%;
-  padding: 16px 20px;
+  padding: 20px 32px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   color: white;
   z-index: 10;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
 }
 
 .logo {
   font-family: 'Playfair Display', serif;
-  font-size: 26px;
+  font-size: 22px;
+  letter-spacing: 3px;
 }
 
 .logo span {
   display: block;
-  font-size: 10px;
-  letter-spacing: 3px;
+  font-size: 9px;
+  letter-spacing: 5px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  margin-top: 2px;
+  opacity: 0.85;
 }
 
-/* ===== HERO ===== */
+.lang-switch { display: flex; gap: 6px; align-items: center; }
+
+.lang-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s, border-color 0.2s;
+  backdrop-filter: blur(6px);
+}
+
+.lang-btn:hover { background: rgba(255,255,255,0.2); }
+.lang-btn.active { background: rgba(138, 90, 0, 0.8); border-color: rgba(138, 90, 0, 1); }
+
 .hero {
   height: 100vh;
   background: url("/static/bg.jpg") center/cover no-repeat;
@@ -43,230 +67,457 @@ header {
   justify-content: center;
   text-align: center;
   color: white;
+  position: relative;
 }
 
-.hero-box {
-  padding: 30px;
-  background: rgba(0,0,0,0.45);
-  border-radius: 14px;
-  backdrop-filter: blur(10px);
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.38);
+}
+
+.hero-box { position: relative; z-index: 1; padding: 40px 32px; }
+
+.hero-sub {
+  font-size: 11px;
+  letter-spacing: 5px;
+  font-weight: 300;
+  opacity: 0.8;
+  margin-bottom: 16px;
 }
 
 .hero h1 {
   font-family: 'Playfair Display', serif;
-  font-size: 28px;
-  line-height: 1.4;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.hero-divider {
+  width: 40px;
+  height: 1px;
+  background: rgba(255,255,255,0.5);
+  margin: 20px auto;
+}
+
+.hero-desc {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  font-weight: 300;
+  opacity: 0.75;
+  margin-bottom: 28px;
 }
 
 .hero button {
-  margin-top: 20px;
-  padding: 12px 26px;
+  padding: 13px 32px;
   background: #8a5a00;
   border: none;
   color: white;
   cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: 500;
+  transition: background 0.2s;
 }
 
-/* ===== CHAT ===== */
+.hero button:hover { background: #a86e00; }
+
 #chat-widget {
   position: fixed;
-  bottom: 16px;
-  right: 16px;
+  bottom: 20px;
+  right: 20px;
   z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 #chat-btn {
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   border: none;
-  font-size: 24px;
+  font-size: 22px;
   cursor: pointer;
   background: #8a5a00;
   color: white;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: transform 0.2s, background 0.2s;
 }
 
-/* CHAT BOX */
+#chat-btn:hover { background: #a86e00; transform: scale(1.05); }
+
 #chat-box {
   display: none;
   flex-direction: column;
-  width: 95vw;
-  max-width: 340px;
-  height: 70vh;
-  max-height: 500px;
-  margin-bottom: 10px;
+  width: min(340px, 92vw);
+  height: min(500px, 72vh);
   border-radius: 16px;
-  background: rgba(0,0,0,0.75);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 8, 6, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.1);
   color: white;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
-/* MESSAGES */
+#chat-header {
+  padding: 14px 16px 12px;
+  background: rgba(138, 90, 0, 0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#chat-header .ch-info { flex: 1; }
+
+#chat-header .ch-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+
+#chat-header .ch-sub {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  font-weight: 300;
+  margin-top: 2px;
+}
+
+#chat-lang { display: flex; gap: 4px; }
+
+.chat-lang-btn {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+  padding: 3px 7px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.chat-lang-btn:hover { background: rgba(0,0,0,0.4); }
+.chat-lang-btn.active { background: rgba(255,255,255,0.2); }
+
 #messages {
   flex: 1;
-  padding: 10px;
+  padding: 12px 12px 6px;
   overflow-y: auto;
-  font-size: 14px;
+  font-size: 13px;
+  scroll-behavior: smooth;
 }
 
-.msg {
-  margin-bottom: 10px;
-  line-height: 1.5;
-  white-space: pre-line;
+#messages::-webkit-scrollbar { width: 4px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.msg { margin-bottom: 10px; line-height: 1.6; white-space: pre-line; }
+
+.msg .sender {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.5;
+  font-weight: 500;
+  margin-bottom: 3px;
 }
 
-/* BUTTON GROUP */
-.btn-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 5px 0 10px;
+.msg.bot .bubble {
+  background: rgba(255,255,255,0.07);
+  border-radius: 0 10px 10px 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.6;
 }
+
+.msg.user .bubble {
+  background: rgba(138, 90, 0, 0.5);
+  border-radius: 10px 10px 0 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.msg.user { text-align: right; }
+
+.btn-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
 
 .quick-btn {
-  padding: 6px 12px;
-  border-radius: 16px;
-  border: none;
-  background: #8a5a00;
+  padding: 6px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(138, 90, 0, 0.6);
+  background: rgba(138, 90, 0, 0.25);
   color: white;
   cursor: pointer;
   font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  transition: background 0.2s;
 }
 
-/* INPUT */
-#input {
-  display: flex;
-  border-top: 1px solid rgba(255,255,255,0.2);
-}
+.quick-btn:hover { background: rgba(138, 90, 0, 0.7); }
 
-#input input {
+#input-area { display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+
+#input-area input {
   flex: 1;
-  padding: 10px;
+  padding: 12px 14px;
   border: none;
   outline: none;
-}
-
-#input button {
-  padding: 10px;
-  border: none;
-  background: #8a5a00;
+  background: transparent;
   color: white;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
 }
 
-/* MOBILE FIX */
-@media (max-width: 500px) {
-  .hero h1 { font-size: 22px; }
+#input-area input::placeholder { color: rgba(255,255,255,0.35); }
+
+#input-area button {
+  padding: 12px 16px;
+  border: none;
+  background: rgba(138, 90, 0, 0.7);
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
 }
+
+#input-area button:hover { background: #8a5a00; }
+
+@media (max-width: 400px) { .hero h1 { font-size: 26px; } }
 </style>
 </head>
 
 <body>
 
 <header>
-  <div class="logo">REGENT<span>PHU QUOC</span></div>
+  <div class="logo">EDEN<span>REGENT PHU QUOC</span></div>
+  <div class="lang-switch">
+    <button class="lang-btn" data-lang="vi" onclick="setLang('vi')">VI</button>
+    <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+  </div>
 </header>
 
 <section class="hero">
   <div class="hero-box">
-    <h1>TRẢI NGHIỆM KỲ NGHỈ ĐẲNG CẤP</h1>
-    <button onclick="openChat()">ĐẶT PHÒNG</button>
+    <p class="hero-sub" data-i18n="hero_sub">PHÚ QUỐC · VIỆT NAM</p>
+    <h1 data-i18n="hero_title" data-i18n-html="1">Trải nghiệm kỳ nghỉ<br>đẳng cấp 5 sao</h1>
+    <div class="hero-divider"></div>
+    <p class="hero-desc" data-i18n="hero_desc">HỒ BƠI · SPA · NHÀ HÀNG · BAR TRÊN CAO</p>
+    <button onclick="openChat()" data-i18n="hero_btn">ĐẶT PHÒNG NGAY</button>
   </div>
 </section>
 
-<!-- CHAT -->
 <div id="chat-widget">
-  <button id="chat-btn">💬</button>
-
   <div id="chat-box">
+    <div id="chat-header">
+      <div class="ch-info">
+        <div class="ch-name">EDEN Regent</div>
+        <div class="ch-sub" data-i18n="chat_sub">LỄ TÂN · 24/7</div>
+      </div>
+      <div id="chat-lang">
+        <button class="chat-lang-btn" data-lang="vi" onclick="setLang('vi')">VI</button>
+        <button class="chat-lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+
     <div id="messages"></div>
 
-    <div id="input">
-      <input id="text" placeholder="Nhập tin nhắn...">
-      <button onclick="send()">Gửi</button>
+    <div id="input-area">
+      <input id="text" data-i18n-attr="placeholder" data-i18n="chat_placeholder" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button onclick="send()">➤</button>
     </div>
   </div>
+
+  <button id="chat-btn" data-i18n-attr="title" data-i18n="chat_btn_title" title="Chat với lễ tân">💬</button>
 </div>
 
 <script>
-const chatBtn = document.getElementById("chat-btn");
-const chatBox = document.getElementById("chat-box");
-const messages = document.getElementById("messages");
-const input = document.getElementById("text");
-
-let greeted = false;
-
-/* OPEN CHAT */
-function openChat(){
-  chatBox.style.display = "flex";
-}
-
-/* TOGGLE */
-chatBtn.onclick = () => {
-  chatBox.style.display =
-    chatBox.style.display === "flex" ? "none" : "flex";
-
-  if (!greeted) {
-    greeted = true;
-    addMessage("REGENT",
-`Chào quý khách
-Tôi là lễ tân Regent Phú Quốc
-Quý khách có thể gõ "đặt phòng" để bắt đầu`,
-    [
-      {label:"📅 Đặt phòng", value:"đặt phòng"},
-      {label:"💰 Giá phòng", value:"giá phòng"},
-      {label:"🏨 Tiện ích", value:"tiện ích"}
-    ]);
+const I18N = {
+  vi: {
+    page_title: "EDEN Regent Phu Quoc",
+    hero_sub: "PHÚ QUỐC · VIỆT NAM",
+    hero_title: "Trải nghiệm kỳ nghỉ<br>đẳng cấp 5 sao",
+    hero_desc: "HỒ BƠI · SPA · NHÀ HÀNG · BAR TRÊN CAO",
+    hero_btn: "ĐẶT PHÒNG NGAY",
+    chat_sub: "LỄ TÂN · 24/7",
+    chat_placeholder: "Nhập tin nhắn...",
+    chat_btn_title: "Chat với lễ tân",
+    sender: "LỄ TÂN",
+    greet: "Chào quý khách 🌴\nTôi là lễ tân EDEN Regent Phú Quốc.\nQuý khách cần hỗ trợ gì ạ?",
+    quick_book: "🛎 Đặt phòng",
+    quick_price: "💰 Giá phòng",
+    quick_amenity: "🏨 Tiện ích",
+    err_connection: "Có lỗi kết nối. Vui lòng thử lại."
+  },
+  en: {
+    page_title: "EDEN Regent Phu Quoc",
+    hero_sub: "PHU QUOC · VIETNAM",
+    hero_title: "Experience a 5-star<br>luxury getaway",
+    hero_desc: "POOL · SPA · RESTAURANT · SKY BAR",
+    hero_btn: "BOOK NOW",
+    chat_sub: "RECEPTION · 24/7",
+    chat_placeholder: "Type a message...",
+    chat_btn_title: "Chat with reception",
+    sender: "RECEPTION",
+    greet: "Welcome 🌴\nI'm the reception of EDEN Regent Phu Quoc.\nHow may I help you?",
+    quick_book: "🛎 Book a room",
+    quick_price: "💰 Room rates",
+    quick_amenity: "🏨 Amenities",
+    err_connection: "Connection error. Please try again."
   }
 };
 
-/* ADD MESSAGE */
-function addMessage(sender, text, buttons=[]) {
-  const div = document.createElement("div");
-  div.className = "msg";
-  div.innerHTML = `<b>${sender}:</b><br>${text}`;
-  messages.appendChild(div);
+const QUICK_VALUES = {
+  vi: { book: "đặt phòng", price: "giá phòng", amenity: "tiện ích" },
+  en: { book: "book a room", price: "room rates", amenity: "amenities" }
+};
 
-  if (buttons.length > 0) {
+let currentLang = localStorage.getItem("eden_lang") || detectBrowserLang();
+
+function detectBrowserLang() {
+  const n = (navigator.language || "vi").toLowerCase();
+  return n.startsWith("vi") ? "vi" : "en";
+}
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || I18N.vi[key] || key;
+}
+
+function applyI18n() {
+  document.documentElement.lang = currentLang;
+  document.title = t("page_title");
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    const attr = el.getAttribute("data-i18n-attr");
+    const isHtml = el.hasAttribute("data-i18n-html");
+    const val = t(key);
+    if (attr) el.setAttribute(attr, val);
+    else if (isHtml) el.innerHTML = val;
+    else el.textContent = val;
+  });
+
+  document.querySelectorAll(".lang-btn, .chat-lang-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.lang === currentLang);
+  });
+}
+
+function setLang(lang) {
+  if (!I18N[lang]) return;
+  currentLang = lang;
+  localStorage.setItem("eden_lang", lang);
+  applyI18n();
+  greeted = false;
+  messages.innerHTML = "";
+  if (chatBox.style.display === "flex") greet();
+}
+
+const chatBtn  = document.getElementById("chat-btn");
+const chatBox  = document.getElementById("chat-box");
+const messages = document.getElementById("messages");
+const input    = document.getElementById("text");
+
+let greeted = false;
+
+function openChat() {
+  chatBox.style.display = "flex";
+  greet();
+}
+
+chatBtn.onclick = () => {
+  const open = chatBox.style.display === "flex";
+  chatBox.style.display = open ? "none" : "flex";
+  if (!open) greet();
+};
+
+function greet() {
+  if (greeted) return;
+  greeted = true;
+  const qv = QUICK_VALUES[currentLang];
+  addBot(
+    t("greet"),
+    [
+      { label: t("quick_book"),    value: qv.book },
+      { label: t("quick_price"),   value: qv.price },
+      { label: t("quick_amenity"), value: qv.amenity }
+    ]
+  );
+}
+
+function addUser(text) {
+  const d = document.createElement("div");
+  d.className = "msg user";
+  d.innerHTML = '<div class="bubble"></div>';
+  d.querySelector(".bubble").textContent = text;
+  messages.appendChild(d);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function addBot(text, buttons) {
+  buttons = buttons || [];
+  const d = document.createElement("div");
+  d.className = "msg bot";
+  d.innerHTML = '<div class="sender"></div><div class="bubble"></div>';
+  d.querySelector(".sender").textContent = t("sender");
+  d.querySelector(".bubble").textContent = text;
+  messages.appendChild(d);
+
+  if (buttons.length) {
     const wrap = document.createElement("div");
     wrap.className = "btn-wrap";
-
-    buttons.forEach(b=>{
+    buttons.forEach(b => {
       const btn = document.createElement("button");
       btn.className = "quick-btn";
       btn.innerText = b.label;
-      btn.onclick = ()=>send(b.value);
+      btn.onclick = () => send(b.value);
       wrap.appendChild(btn);
     });
-
     messages.appendChild(wrap);
   }
 
   messages.scrollTop = messages.scrollHeight;
 }
 
-/* SEND */
-async function send(textOverride=null){
-  const text = textOverride || input.value.trim();
-  if(!text) return;
+async function send(override) {
+  const text = override || input.value.trim();
+  if (!text) return;
 
-  addMessage("Bạn", text);
+  addUser(text);
   input.value = "";
 
-  const res = await fetch("/chat",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({message:text})
-  });
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, lang: currentLang })
+    });
 
-  const data = await res.json();
-  addMessage("REGENT", data.reply, data.buttons || []);
+    const data = await res.json();
+    if (data.lang && data.lang !== currentLang) {
+      currentLang = data.lang;
+      localStorage.setItem("eden_lang", currentLang);
+      applyI18n();
+    }
+    addBot(data.reply, data.buttons || []);
+  } catch (err) {
+    addBot(t("err_connection"));
+  }
 }
 
-/* ENTER */
-input.addEventListener("keydown", e=>{
-  if(e.key==="Enter") send();
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
 });
+
+applyI18n();
 </script>
 
 </body>
