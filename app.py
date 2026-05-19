@@ -44,6 +44,48 @@ except Exception as _e:
         except Exception:
             return str(date_str)
 
+try:
+    from google_sheet import get_hotel_config
+except Exception as _e:
+    print("WARN: cannot import get_hotel_config:", _e)
+    def get_hotel_config():
+        return {}
+
+try:
+    from google_sheet import build_hotel_info as _build_hotel_info_vi
+except Exception as _e:
+    print("WARN: cannot import build_hotel_info, using local fallback:", _e)
+    def _build_hotel_info_vi(config):
+        def g(k, d=""): return config.get(k, d)
+        return f"""
+Tên khách sạn: {g("hotel_name")}
+Địa chỉ: {g("address")}
+Hotline: {g("hotline")}
+
+Giá phòng:
+- Phòng đơn: {g("price_single")} / đêm
+- Phòng đôi: {g("price_double")} / đêm
+- Phòng Suite: {g("price_suite")} / đêm
+
+Check-in: {g("checkin_time")}
+Check-out: {g("checkout_time")}
+
+Tiện ích:
+{g("amenities")}
+
+Chính sách đặt cọc:
+{g("deposit_policy")}
+
+Thanh toán:
+{g("payment_policy")}
+
+Chính sách hủy:
+{g("cancel_policy")}
+
+Lưu ý:
+{g("note")}
+""".strip()
+
 app = Flask(__name__)
 app.secret_key = "eden-secret-key"
 
@@ -165,89 +207,85 @@ T = {
 def tr(lang, key):
     return T.get(lang, T["vi"]).get(key, T["vi"].get(key, key))
 
-# ================== DATA ==================
-HOTEL_INFO = {
-    "vi": """
-Tên khách sạn: EDEN Regent Phu Quoc
-Địa chỉ: Phú Quốc
-Hotline: 0123 456 789
+# ================== DATA (lấy động từ Sheet "Config") ==================
+def build_hotel_info_en(config):
+    """Build the English hotel info string from the Config dict.
 
-Giá phòng:
-- Phòng đơn: 800.000đ / đêm
-- Phòng đôi: 1.200.000đ / đêm
-- Phòng Suite: 2.000.000đ / đêm
+    Reads English-specific keys (suffix `_en`) first; falls back to the
+    Vietnamese key if the English one is missing or empty. This lets the
+    user keep one Sheet with two parallel language columns.
+    """
+    def g(key_en, key_vi=None, default=""):
+        v = str(config.get(key_en, "")).strip()
+        if v:
+            return v
+        if key_vi:
+            v = str(config.get(key_vi, "")).strip()
+            if v:
+                return v
+        return default
 
-Check-in: 14:00
-Check-out: 12:00
-
-Tiện ích:
-- Hồ bơi ngoài trời
-- Phòng gym
-- Spa
-- Nhà hàng
-- Wi-Fi miễn phí
-- Lễ tân 24/7
-- Quầy bar trên cao
-- Xe điện di chuyển quanh khách sạn
-
-Chính sách đặt cọc:
-Để đảm bảo giữ phòng, quý khách vui lòng đặt cọc trước 30% tổng giá trị booking.
-
-Thanh toán:
-- 30% đặt cọc khi xác nhận đặt phòng
-- 70% còn lại thanh toán khi nhận phòng
-
-Chính sách hủy:
-- Hủy trước 24 giờ: hoàn lại 100% tiền cọc
-- Hủy trong vòng 24 giờ: không hoàn cọc
-
-Lưu ý:
-Đặt phòng chỉ được xác nhận sau khi khách sạn nhận được tiền cọc.
-""",
-    "en": """
-Hotel name: EDEN Regent Phu Quoc
-Address: Phu Quoc, Vietnam
-Hotline: 0123 456 789
+    return f"""
+Hotel name: {g("hotel_name_en", "hotel_name")}
+Address: {g("address_en", "address")}
+Hotline: {g("hotline")}
 
 Room rates:
-- Single room: 800,000 VND / night
-- Double room: 1,200,000 VND / night
-- Suite: 2,000,000 VND / night
+- Single room: {g("price_single")} / night
+- Double room: {g("price_double")} / night
+- Suite: {g("price_suite")} / night
 
-Check-in: 14:00
-Check-out: 12:00
+Check-in: {g("checkin_time")}
+Check-out: {g("checkout_time")}
 
 Amenities:
-- Outdoor swimming pool
-- Gym
-- Spa
-- Restaurant
-- Free Wi-Fi
-- 24/7 reception
-- Sky bar
-- Electric shuttle around the resort
+{g("amenities_en", "amenities")}
 
 Deposit policy:
-To secure the booking, please pay a 30% deposit of the total value in advance.
+{g("deposit_policy_en", "deposit_policy")}
 
 Payment:
-- 30% deposit on booking confirmation
-- 70% balance paid at check-in
+{g("payment_policy_en", "payment_policy")}
 
 Cancellation policy:
-- Cancel more than 24 hours in advance: 100% deposit refund
-- Cancel within 24 hours: deposit non-refundable
+{g("cancel_policy_en", "cancel_policy")}
 
 Note:
-A booking is only confirmed after the hotel receives the deposit.
-"""
-}
+{g("note_en", "note")}
+""".strip()
 
-ROOM_PRICES = {
-    "Phòng đơn": 800000,
-    "Phòng đôi": 1200000,
-    "Suite": 2000000
-}
+
+def get_hotel_info(lang):
+    """Load the Config sheet on demand and build the info string in the requested language."""
+    try:
+        config = get_hotel_config() or {}
+    except Exception as e:
+        print("WARN: get_hotel_config failed:", e)
+        config = {}
+    if lang == "en":
+        return build_hotel_info_en(config)
+    return _build_hotel_info_vi(config)
+
+
+def parse_price(value):
+    """Parse a price string like '800.000đ' or '800,000 VND' to an integer."""
+    if not value:
+        return 0
+    digits = re.sub(r"[^0-9]", "", str(value))
+    return int(digits) if digits else 0
+
+
+def get_room_prices():
+    """Return room prices from the Config sheet, falling back to defaults."""
+    try:
+        config = get_hotel_config() or {}
+    except Exception:
+        config = {}
+    return {
+        "Phòng đơn": parse_price(config.get("price_single")) or 800000,
+        "Phòng đôi": parse_price(config.get("price_double")) or 1200000,
+        "Suite":     parse_price(config.get("price_suite"))  or 2000000,
+    }
 
 def normalize_room(text):
     t_low = text.lower().strip()
@@ -329,7 +367,7 @@ def chat():
                 checkin_dt = datetime.strptime(b["checkin"], "%d/%m/%Y")
                 checkout_dt = datetime.strptime(b["checkout"], "%d/%m/%Y")
                 nights = (checkout_dt - checkin_dt).days
-                price_per_night = ROOM_PRICES.get(b["room"], 0)
+                price_per_night = get_room_prices().get(b["room"], 0)
                 total = nights * price_per_night
                 if lang == "en":
                     total_str = f"{total:,.0f} VND"
@@ -403,7 +441,7 @@ def chat():
     # ================== GEMINI ==================
     try:
         role = tr(lang, "gemini_role")
-        info = HOTEL_INFO.get(lang, HOTEL_INFO["vi"])
+        info = get_hotel_info(lang)
         guest_label = "Guest asks" if lang == "en" else "Khách hỏi"
         reply = ask_gemini(f"""{role}
 
