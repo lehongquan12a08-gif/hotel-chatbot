@@ -440,7 +440,6 @@ def chat():
                         session.clear()
                         return jsonify({"reply": tr(lang, "no_room"), "lang": lang})
 
-                    b["guests"] = ""
                     b["note"] = ""
                     save_booking(b)
                     subtract_rooms(b["checkin"], b["checkout"], b["room"])

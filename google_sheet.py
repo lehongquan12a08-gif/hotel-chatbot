@@ -231,7 +231,6 @@ def save_booking(data):
             normalize_date(data.get("checkin")),
             normalize_date(data.get("checkout")),
             normalize_room_type(data.get("room")),
-            data.get("guests"),
             data.get("name"),
             data.get("phone"),
             note
