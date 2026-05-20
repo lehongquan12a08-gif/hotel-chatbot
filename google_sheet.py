@@ -309,10 +309,19 @@ def save_booking(data):
         if not note or note == "skip":
             note = ""
 
+        # Hỗ trợ cả chuỗi đa phòng dạng "1 Phòng đơn, 1 Suite" lẫn 1 loại đơn
+        # (vd "Single", "đôi"). Nếu chuỗi bắt đầu bằng số hoặc có dấu phẩy, coi là
+        # composite và ghi nguyên xi; ngược lại mới chuẩn hoá về 1 trong 3 loại.
+        room_raw = str(data.get("room", "")).strip()
+        if room_raw and (room_raw[0].isdigit() or "," in room_raw):
+            room_value = room_raw
+        else:
+            room_value = normalize_room_type(room_raw)
+
         sheet.append_row([
             normalize_date(data.get("checkin")),
             normalize_date(data.get("checkout")),
-            normalize_room_type(data.get("room")),
+            room_value,
             data.get("name"),
             data.get("phone"),
             note
