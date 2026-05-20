@@ -787,24 +787,6 @@ function getTimeStr() {
     { hour: "2-digit", minute: "2-digit" });
 }
 
-/* ===== SOUND NOTIFICATION ===== */
-function playNotification() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.45);
-  } catch(e) {}
-}
-
 /* ===== BOOKING PROGRESS BAR ===== */
 const PROGRESS_STEPS = {
   vi: [
@@ -943,7 +925,6 @@ function addBot(text, buttons, qtyPicker, datePicker, progress) {
     renderDatePicker(datePicker);
   }
 
-  playNotification();
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -958,47 +939,6 @@ function renderDatePicker(picker) {
     ? (currentLang === "vi" ? "📅 Chọn ngày nhận phòng" : "📅 Select check-in date")
     : (currentLang === "vi" ? "📅 Chọn ngày trả phòng" : "📅 Select check-out date");
   wrap.appendChild(label);
-
-  // --- Shortcut chips ---
-  // Tính min offset (số ngày từ hôm nay)
-  const minDate = picker.min ? new Date(picker.min) : new Date();
-  minDate.setHours(0,0,0,0);
-  const todayMs = new Date(); todayMs.setHours(0,0,0,0);
-  const minOffsetDays = Math.round((minDate - todayMs) / 86400000);
-
-  // Tạo chips: nhãn + số ngày kể từ min
-  const shortcuts = picker.step === "checkin"
-    ? (currentLang === "vi"
-        ? [["Ngày mai", 1], ["+3 ngày", 3], ["+7 ngày", 7], ["+14 ngày", 14]]
-        : [["Tomorrow", 1], ["+3 days", 3], ["+7 days", 7], ["+14 days", 14]])
-    : (currentLang === "vi"
-        ? [["1 đêm", 0], ["2 đêm", 1], ["3 đêm", 2], ["7 đêm", 6]]
-        : [["1 night", 0], ["2 nights", 1], ["3 nights", 2], ["7 nights", 6]]);
-
-  const chipWrap = document.createElement("div");
-  chipWrap.className = "date-shortcuts";
-
-  function isoFromOffset(offsetFromToday) {
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    d.setDate(d.getDate() + offsetFromToday);
-    return d.toISOString().split("T")[0];
-  }
-
-  shortcuts.forEach(([chipLabel, daysFromMin]) => {
-    const offsetFromToday = minOffsetDays + daysFromMin;
-    const targetIso = isoFromOffset(offsetFromToday);
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "date-chip";
-    chip.textContent = chipLabel;
-    chip.onclick = () => {
-      dateInput.value = targetIso;
-      hint.classList.remove("show");
-    };
-    chipWrap.appendChild(chip);
-  });
-  wrap.appendChild(chipWrap);
 
   // Input date
   const dateInput = document.createElement("input");
@@ -1035,7 +975,6 @@ function renderDatePicker(picker) {
 
     // Khoá widget lại
     dateInput.disabled = true;
-    chipWrap.querySelectorAll(".date-chip").forEach(c => c.disabled = true);
     btn.disabled = true;
 
     // Hiện bubble người dùng và gửi
