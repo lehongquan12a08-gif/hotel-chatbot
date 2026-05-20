@@ -418,6 +418,173 @@ header {
 }
 .date-hint.show { opacity: 1; }
 
+/* ===== BOOKING PROGRESS BAR ===== */
+#booking-progress {
+  padding: 10px 14px 8px;
+  background: rgba(138, 90, 0, 0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: none;
+  flex-shrink: 0;
+}
+
+.progress-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+}
+
+.progress-line {
+  position: absolute;
+  top: 11px;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 1;
+  flex: 1;
+}
+
+.step-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: background 0.35s, border-color 0.35s, box-shadow 0.35s;
+}
+
+.step-label {
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  opacity: 0.35;
+  text-align: center;
+  font-weight: 500;
+  transition: opacity 0.35s;
+  white-space: nowrap;
+}
+
+.progress-step.done .step-circle {
+  background: rgba(138, 90, 0, 0.55);
+  border-color: rgba(138, 90, 0, 0.8);
+}
+.progress-step.done .step-label { opacity: 0.75; }
+
+.progress-step.active .step-circle {
+  background: rgba(138, 90, 0, 0.9);
+  border-color: #c08020;
+  box-shadow: 0 0 7px rgba(168, 110, 0, 0.6);
+}
+.progress-step.active .step-label { opacity: 1; }
+
+/* ===== SCROLL-TO-BOTTOM BTN ===== */
+#scroll-btn {
+  position: sticky;
+  bottom: 8px;
+  float: right;
+  margin-right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(20,14,8,0.82);
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: opacity 0.2s, background 0.2s;
+  z-index: 5;
+}
+#scroll-btn:hover { background: rgba(138,90,0,0.6); color: white; }
+
+/* ===== MESSAGE TIMESTAMP ===== */
+.msg-time {
+  display: block;
+  font-size: 9px;
+  opacity: 0.35;
+  margin-top: 3px;
+  letter-spacing: 0.3px;
+}
+.msg.user .msg-time { text-align: right; }
+
+/* ===== DATE SHORTCUT CHIPS ===== */
+.date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.date-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(138, 90, 0, 0.55);
+  background: rgba(138, 90, 0, 0.18);
+  color: white;
+  font-size: 11px;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.date-chip:hover { background: rgba(138, 90, 0, 0.55); }
+
+/* ===== TYPING INDICATOR ===== */
+.typing-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.typing-sender {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.5;
+  font-weight: 500;
+}
+
+.typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 0 10px 10px 10px;
+  padding: 10px 14px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.6);
+  animation: typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%            { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ===== INPUT DISABLED STATE ===== */
+#input-area input:disabled { opacity: 0.5; }
+#input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
 #input-area { display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
 
 #input-area input {
@@ -482,7 +649,12 @@ header {
       </div>
     </div>
 
-    <div id="messages"></div>
+    <!-- Progress bar đặt phòng -->
+    <div id="booking-progress"></div>
+
+    <div id="messages" style="position:relative;">
+      <button id="scroll-btn" title="Xuống cuối">↓</button>
+    </div>
 
     <div id="input-area">
       <input id="text" data-i18n-attr="placeholder" data-i18n="chat_placeholder" placeholder="Nhập tin nhắn..." autocomplete="off">
@@ -571,6 +743,7 @@ function setLang(lang) {
   applyI18n();
   greeted = false;
   messages.innerHTML = "";
+  updateProgress(null); // ẩn progress bar khi đổi ngôn ngữ
   // Reset server session so a language switch doesn't desync an in-progress booking
   fetch("/reset", { method: "POST" }).catch(() => {});
   if (chatBox.style.display === "flex") greet();
@@ -608,22 +781,145 @@ function greet() {
   );
 }
 
+/* ===== TIMESTAMP ===== */
+function getTimeStr() {
+  return new Date().toLocaleTimeString(currentLang === "vi" ? "vi-VN" : "en-US",
+    { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ===== SOUND NOTIFICATION ===== */
+function playNotification() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(660, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.45);
+  } catch(e) {}
+}
+
+/* ===== BOOKING PROGRESS BAR ===== */
+const PROGRESS_STEPS = {
+  vi: [
+    { icon: "📅", label: "Ngày" },
+    { icon: "🛏", label: "Phòng" },
+    { icon: "👤", label: "Thông tin" },
+    { icon: "✅", label: "Xác nhận" },
+  ],
+  en: [
+    { icon: "📅", label: "Dates" },
+    { icon: "🛏", label: "Rooms" },
+    { icon: "👤", label: "Details" },
+    { icon: "✅", label: "Confirm" },
+  ],
+};
+
+const progressBar = document.getElementById("booking-progress");
+
+function updateProgress(idx) {
+  if (idx === undefined || idx === null || idx < 0) {
+    progressBar.style.display = "none";
+    return;
+  }
+  progressBar.style.display = "block";
+  progressBar.innerHTML = "";
+
+  const steps = PROGRESS_STEPS[currentLang] || PROGRESS_STEPS.vi;
+  const wrap = document.createElement("div");
+  wrap.className = "progress-steps";
+
+  const line = document.createElement("div");
+  line.className = "progress-line";
+  wrap.appendChild(line);
+
+  steps.forEach((s, i) => {
+    const step = document.createElement("div");
+    step.className = "progress-step" + (i < idx ? " done" : i === idx ? " active" : "");
+
+    const circle = document.createElement("div");
+    circle.className = "step-circle";
+    circle.textContent = i < idx ? "✓" : s.icon;
+
+    const label = document.createElement("div");
+    label.className = "step-label";
+    label.textContent = s.label;
+
+    step.appendChild(circle);
+    step.appendChild(label);
+    wrap.appendChild(step);
+  });
+
+  progressBar.appendChild(wrap);
+}
+
+/* ===== SCROLL-TO-BOTTOM BUTTON ===== */
+const scrollBtn = document.getElementById("scroll-btn");
+
+messages.addEventListener("scroll", () => {
+  const atBottom = messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 60;
+  scrollBtn.style.display = atBottom ? "none" : "flex";
+});
+
+scrollBtn.onclick = () => {
+  messages.scrollTo({ top: messages.scrollHeight, behavior: "smooth" });
+};
+
 function addUser(text) {
   const d = document.createElement("div");
   d.className = "msg user";
-  d.innerHTML = '<div class="bubble"></div>';
+  d.innerHTML = '<div class="bubble"></div><span class="msg-time"></span>';
   d.querySelector(".bubble").textContent = text;
+  d.querySelector(".msg-time").textContent = getTimeStr();
   messages.appendChild(d);
   messages.scrollTop = messages.scrollHeight;
 }
 
-function addBot(text, buttons, qtyPicker, datePicker) {
+/* ===== TYPING INDICATOR ===== */
+let _typingEl = null;
+
+function showTyping() {
+  if (_typingEl) return;
+  const wrap = document.createElement("div");
+  wrap.className = "typing-wrap";
+
+  const senderEl = document.createElement("div");
+  senderEl.className = "typing-sender";
+  senderEl.textContent = t("sender");
+
+  const dots = document.createElement("div");
+  dots.className = "typing-dots";
+  dots.innerHTML = "<span></span><span></span><span></span>";
+
+  wrap.appendChild(senderEl);
+  wrap.appendChild(dots);
+  messages.appendChild(wrap);
+  messages.scrollTop = messages.scrollHeight;
+  _typingEl = wrap;
+}
+
+function hideTyping() {
+  if (_typingEl) { _typingEl.remove(); _typingEl = null; }
+}
+
+function addBot(text, buttons, qtyPicker, datePicker, progress) {
   buttons = buttons || [];
+
+  // Cập nhật progress bar
+  updateProgress(progress !== undefined ? progress : null);
+
   const d = document.createElement("div");
   d.className = "msg bot";
-  d.innerHTML = '<div class="sender"></div><div class="bubble"></div>';
+  d.innerHTML = '<div class="sender"></div><div class="bubble"></div><span class="msg-time"></span>';
   d.querySelector(".sender").textContent = t("sender");
   d.querySelector(".bubble").textContent = text;
+  d.querySelector(".msg-time").textContent = getTimeStr();
   messages.appendChild(d);
 
   if (buttons.length) {
@@ -647,6 +943,7 @@ function addBot(text, buttons, qtyPicker, datePicker) {
     renderDatePicker(datePicker);
   }
 
+  playNotification();
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -657,12 +954,51 @@ function renderDatePicker(picker) {
   // Label
   const label = document.createElement("div");
   label.className = "date-picker-label";
-  if (picker.step === "checkin") {
-    label.textContent = currentLang === "vi" ? "📅 Chọn ngày nhận phòng" : "📅 Select check-in date";
-  } else {
-    label.textContent = currentLang === "vi" ? "📅 Chọn ngày trả phòng" : "📅 Select check-out date";
-  }
+  label.textContent = picker.step === "checkin"
+    ? (currentLang === "vi" ? "📅 Chọn ngày nhận phòng" : "📅 Select check-in date")
+    : (currentLang === "vi" ? "📅 Chọn ngày trả phòng" : "📅 Select check-out date");
   wrap.appendChild(label);
+
+  // --- Shortcut chips ---
+  // Tính min offset (số ngày từ hôm nay)
+  const minDate = picker.min ? new Date(picker.min) : new Date();
+  minDate.setHours(0,0,0,0);
+  const todayMs = new Date(); todayMs.setHours(0,0,0,0);
+  const minOffsetDays = Math.round((minDate - todayMs) / 86400000);
+
+  // Tạo chips: nhãn + số ngày kể từ min
+  const shortcuts = picker.step === "checkin"
+    ? (currentLang === "vi"
+        ? [["Ngày mai", 1], ["+3 ngày", 3], ["+7 ngày", 7], ["+14 ngày", 14]]
+        : [["Tomorrow", 1], ["+3 days", 3], ["+7 days", 7], ["+14 days", 14]])
+    : (currentLang === "vi"
+        ? [["1 đêm", 0], ["2 đêm", 1], ["3 đêm", 2], ["7 đêm", 6]]
+        : [["1 night", 0], ["2 nights", 1], ["3 nights", 2], ["7 nights", 6]]);
+
+  const chipWrap = document.createElement("div");
+  chipWrap.className = "date-shortcuts";
+
+  function isoFromOffset(offsetFromToday) {
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + offsetFromToday);
+    return d.toISOString().split("T")[0];
+  }
+
+  shortcuts.forEach(([chipLabel, daysFromMin]) => {
+    const offsetFromToday = minOffsetDays + daysFromMin;
+    const targetIso = isoFromOffset(offsetFromToday);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "date-chip";
+    chip.textContent = chipLabel;
+    chip.onclick = () => {
+      dateInput.value = targetIso;
+      hint.classList.remove("show");
+    };
+    chipWrap.appendChild(chip);
+  });
+  wrap.appendChild(chipWrap);
 
   // Input date
   const dateInput = document.createElement("input");
@@ -672,7 +1008,7 @@ function renderDatePicker(picker) {
   if (picker.max) dateInput.max = picker.max;
   wrap.appendChild(dateInput);
 
-  // Hint (ẩn, chỉ hiện khi không chọn ngày)
+  // Hint (chỉ hiện khi bấm xác nhận mà chưa chọn ngày)
   const hint = document.createElement("div");
   hint.className = "date-hint";
   hint.textContent = currentLang === "vi"
@@ -699,6 +1035,7 @@ function renderDatePicker(picker) {
 
     // Khoá widget lại
     dateInput.disabled = true;
+    chipWrap.querySelectorAll(".date-chip").forEach(c => c.disabled = true);
     btn.disabled = true;
 
     // Hiện bubble người dùng và gửi
@@ -835,7 +1172,16 @@ async function sendRaw(payload) {
   await postChat(payload);
 }
 
+function setInputLocked(locked) {
+  input.disabled = locked;
+  const sendBtn = document.querySelector("#input-area button");
+  if (sendBtn) sendBtn.disabled = locked;
+}
+
 async function postChat(text) {
+  setInputLocked(true);
+  showTyping();
+
   try {
     const res = await fetch("/chat", {
       method: "POST",
@@ -844,14 +1190,21 @@ async function postChat(text) {
     });
 
     const data = await res.json();
+    hideTyping();
+
     if (data.lang && data.lang !== currentLang) {
       currentLang = data.lang;
       localStorage.setItem("eden_lang", currentLang);
       applyI18n();
     }
-    addBot(data.reply, data.buttons || [], data.quantity_picker, data.date_picker);
+    addBot(data.reply, data.buttons || [], data.quantity_picker, data.date_picker, data.progress);
   } catch (err) {
+    hideTyping();
     addBot(t("err_connection"));
+  } finally {
+    setInputLocked(false);
+    // Auto-focus lại ô nhập sau khi bot reply xong
+    setTimeout(() => input.focus(), 80);
   }
 }
 

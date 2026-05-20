@@ -626,6 +626,15 @@ def build_rooms_picker(lang, avail):
         "submit_prefix": ROOMS_PICK_PREFIX,
     }
 
+def booking_progress(step):
+    """Chuyển tên step sang index 0-3 cho progress bar; -1 = ẩn."""
+    return {
+        "checkin": 0, "checkout": 0,
+        "rooms": 1,
+        "name": 2, "phone": 2, "note": 2,
+        "confirm": 3,
+    }.get(step, -1)
+
 # ================== ROUTES ==================
 @app.route("/")
 def home():
@@ -669,27 +678,45 @@ def chat():
                 return jsonify({
                     "reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkin"),
                     "lang": lang,
-                    "date_picker": {"step": "checkin", "min": today_iso}
+                    "progress": 0,
+                    "date_picker": {"step": "checkin", "min": today_iso},
                 })
             b["checkin"] = checkin_str
             session["booking"] = b
             session["step"] = "checkout"
-            min_checkout_iso = (checkin_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+            min_co_iso = (checkin_dt + timedelta(days=1)).strftime("%Y-%m-%d")
             return jsonify({
                 "reply": tr(lang, "ask_checkout"),
                 "lang": lang,
-                "date_picker": {"step": "checkout", "min": min_checkout_iso}
+                "progress": 0,
+                "date_picker": {"step": "checkout", "min": min_co_iso},
             })
 
         if step == "checkout":
             checkout_str = normalize_date(msg)
+            # Tính min checkout để truyền cho date_picker khi có lỗi
             try:
                 checkin_dt = datetime.strptime(b["checkin"], "%d/%m/%Y")
+                min_co_iso = (checkin_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+            except Exception:
+                checkin_dt = None
+                min_co_iso = date.today().strftime("%Y-%m-%d")
+            try:
                 checkout_dt = datetime.strptime(checkout_str, "%d/%m/%Y")
-                if checkout_dt <= checkin_dt:
-                    return jsonify({"reply": tr(lang, "invalid_dates"), "lang": lang})
+                if not checkin_dt or checkout_dt <= checkin_dt:
+                    return jsonify({
+                        "reply": tr(lang, "invalid_dates"),
+                        "lang": lang,
+                        "progress": 0,
+                        "date_picker": {"step": "checkout", "min": min_co_iso},
+                    })
             except ValueError:
-                return jsonify({"reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkout"), "lang": lang})
+                return jsonify({
+                    "reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkout"),
+                    "lang": lang,
+                    "progress": 0,
+                    "date_picker": {"step": "checkout", "min": min_co_iso},
+                })
             b["checkout"] = checkout_str
             session["booking"] = b
             session["step"] = "rooms"
@@ -704,6 +731,7 @@ def chat():
             return jsonify({
                 "reply": tr(lang, "ask_rooms_qty"),
                 "lang": lang,
+                "progress": 1,
                 "quantity_picker": build_rooms_picker(lang, avail),
             })
 
@@ -718,6 +746,7 @@ def chat():
                 return jsonify({
                     "reply": tr(lang, "ask_rooms_qty"),
                     "lang": lang,
+                    "progress": 1,
                     "quantity_picker": build_rooms_picker(lang, avail),
                 })
 
@@ -729,19 +758,20 @@ def chat():
                 return jsonify({
                     "reply": tr(lang, "no_room_selected"),
                     "lang": lang,
+                    "progress": 1,
                     "quantity_picker": build_rooms_picker(lang, avail),
                 })
 
             b["rooms"] = rooms
             session["booking"] = b
             session["step"] = "name"
-            return jsonify({"reply": tr(lang, "ask_name"), "lang": lang})
+            return jsonify({"reply": tr(lang, "ask_name"), "lang": lang, "progress": 2})
 
         if step == "name":
             b["name"] = msg
             session["booking"] = b
             session["step"] = "phone"
-            return jsonify({"reply": tr(lang, "ask_phone"), "lang": lang})
+            return jsonify({"reply": tr(lang, "ask_phone"), "lang": lang, "progress": 2})
 
         if step == "phone":
             b["phone"] = msg
@@ -750,9 +780,10 @@ def chat():
             return jsonify({
                 "reply": tr(lang, "ask_note"),
                 "lang": lang,
+                "progress": 2,
                 "buttons": [
                     {"label": tr(lang, "btn_skip"), "value": "skip"}
-                ]
+                ],
             })
 
         if step == "note":
@@ -797,10 +828,11 @@ def chat():
             return jsonify({
                 "reply": summary,
                 "lang": lang,
+                "progress": 3,
                 "buttons": [
                     {"label": tr(lang, "btn_confirm"), "value": "confirm"},
-                    {"label": tr(lang, "btn_cancel"),  "value": "cancel"}
-                ]
+                    {"label": tr(lang, "btn_cancel"),  "value": "cancel"},
+                ],
             })
 
         if step == "confirm":
@@ -834,10 +866,11 @@ def chat():
             return jsonify({
                 "reply": tr(lang, "confirm_prompt"),
                 "lang": lang,
+                "progress": 3,
                 "buttons": [
                     {"label": tr(lang, "btn_confirm"), "value": "confirm"},
-                    {"label": tr(lang, "btn_cancel"),  "value": "cancel"}
-                ]
+                    {"label": tr(lang, "btn_cancel"),  "value": "cancel"},
+                ],
             })
 
     # ================== START BOOKING ==================
@@ -850,7 +883,8 @@ def chat():
         return jsonify({
             "reply": tr(lang, "ask_checkin"),
             "lang": lang,
-            "date_picker": {"step": "checkin", "min": today_iso}
+            "progress": 0,
+            "date_picker": {"step": "checkin", "min": today_iso},
         })
 
     # ================== GEMINI ==================
