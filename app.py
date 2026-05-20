@@ -172,7 +172,7 @@ def resolve_lang(client_lang, message):
     
     # Nếu tin nhắn quá ngắn (dưới 4 ký tự hoặc chỉ là 1-2 từ đơn), 
     # giữ nguyên ngôn ngữ hiện tại của client/session
-    words = re.findall(r"[a-z0-9àáạảã...]+", message.lower()) # liệt kê đủ ký tự
+    words = message.lower().split()
     if len(message.strip()) < 4 or len(words) <= 2:
         return client_lang
 
@@ -222,6 +222,9 @@ T = {
         "book_success": "🎉 Đặt phòng thành công!\nKhách sạn sẽ liên hệ xác nhận và hướng dẫn đặt cọc sớm nhất.\nCảm ơn quý khách! 🙏",
         "book_cancel": "Đã hủy đặt phòng. Quý khách cần hỗ trợ gì thêm không? 😊",
         "system_busy": "Hệ thống đang bận, vui lòng thử lại sau.",
+        "confirm_prompt": "Quý khách vui lòng xác nhận hoặc hủy đặt phòng.",
+        "invalid_date_format": "Ngày không hợp lệ. Vui lòng nhập theo định dạng DD/MM/YYYY.",
+        "invalid_dates": "Ngày trả phòng phải sau ngày nhận phòng. Vui lòng nhập lại ngày trả phòng.",
         "gemini_role": "Bạn là lễ tân khách sạn EDEN Regent Phú Quốc.\nTrả lời ngắn gọn, lịch sự, thân thiện bằng TIẾNG VIỆT.\nKhông dùng markdown.",
     },
     "en": {
@@ -257,6 +260,9 @@ T = {
         "book_success": "🎉 Booking successful!\nThe hotel will contact you shortly to confirm and guide the deposit.\nThank you! 🙏",
         "book_cancel": "Booking cancelled. Anything else I can help with? 😊",
         "system_busy": "The system is busy, please try again later.",
+        "confirm_prompt": "Please confirm or cancel your booking.",
+        "invalid_date_format": "Invalid date. Please enter in DD/MM/YYYY format.",
+        "invalid_dates": "Check-out must be after check-in. Please enter a valid check-out date.",
         "gemini_role": "You are the receptionist of EDEN Regent Phu Quoc hotel.\nReply briefly, politely and warmly in ENGLISH.\nDo not use markdown.",
     }
 }
@@ -626,6 +632,11 @@ def home():
     session.clear()
     return render_template("index.html")
 
+@app.route("/reset", methods=["POST"])
+def reset_session():
+    session.clear()
+    return jsonify({"ok": True})
+
 @app.route("/chat", methods=["POST"])
 def chat():
     payload = request.json or {}
@@ -650,13 +661,26 @@ def chat():
         b = session.get("booking", {})
 
         if step == "checkin":
-            b["checkin"] = normalize_date(msg)
+            checkin_str = normalize_date(msg)
+            try:
+                datetime.strptime(checkin_str, "%d/%m/%Y")
+            except ValueError:
+                return jsonify({"reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkin"), "lang": lang})
+            b["checkin"] = checkin_str
             session["booking"] = b
             session["step"] = "checkout"
             return jsonify({"reply": tr(lang, "ask_checkout"), "lang": lang})
 
         if step == "checkout":
-            b["checkout"] = normalize_date(msg)
+            checkout_str = normalize_date(msg)
+            try:
+                checkin_dt = datetime.strptime(b["checkin"], "%d/%m/%Y")
+                checkout_dt = datetime.strptime(checkout_str, "%d/%m/%Y")
+                if checkout_dt <= checkin_dt:
+                    return jsonify({"reply": tr(lang, "invalid_dates"), "lang": lang})
+            except ValueError:
+                return jsonify({"reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkout"), "lang": lang})
+            b["checkout"] = checkout_str
             session["booking"] = b
             session["step"] = "rooms"
 
@@ -795,6 +819,16 @@ def chat():
             if msg_lower == "cancel":
                 session.clear()
                 return jsonify({"reply": tr(lang, "book_cancel"), "lang": lang})
+
+            # Fallback: any other message in confirm step → re-show buttons
+            return jsonify({
+                "reply": tr(lang, "confirm_prompt"),
+                "lang": lang,
+                "buttons": [
+                    {"label": tr(lang, "btn_confirm"), "value": "confirm"},
+                    {"label": tr(lang, "btn_cancel"),  "value": "cancel"}
+                ]
+            })
 
     # ================== START BOOKING ==================
     if is_booking_intent(msg_lower):

@@ -510,6 +510,8 @@ function setLang(lang) {
   applyI18n();
   greeted = false;
   messages.innerHTML = "";
+  // Reset server session so a language switch doesn't desync an in-progress booking
+  fetch("/reset", { method: "POST" }).catch(() => {});
   if (chatBox.style.display === "flex") greet();
 }
 
@@ -570,7 +572,7 @@ function addBot(text, buttons, qtyPicker) {
       const btn = document.createElement("button");
       btn.className = "quick-btn";
       btn.innerText = b.label;
-      btn.onclick = () => send(b.value);
+      btn.onclick = () => send(b.value, b.label);
       wrap.appendChild(btn);
     });
     messages.appendChild(wrap);
@@ -692,11 +694,11 @@ function renderQtyPicker(picker) {
   messages.appendChild(wrap);
 }
 
-async function send(override) {
-  const text = override || input.value.trim();
+async function send(value, displayText) {
+  const text = value || input.value.trim();
   if (!text) return;
 
-  addUser(text);
+  addUser(displayText !== undefined ? displayText : text);
   input.value = "";
   await postChat(text);
 }
@@ -729,7 +731,7 @@ async function postChat(text) {
 }
 
 input.addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
+  if (e.key === "Enter") { e.preventDefault(); send(); }
 });
 
 applyI18n();
