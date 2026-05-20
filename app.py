@@ -432,6 +432,109 @@ def calc_rooms_total(rooms, nights):
     return total
 
 
+# ================== BOOKING INTENT DETECTION ==================
+# Mục tiêu: phân biệt "muốn đặt phòng" (intent) với "đặt phòng có khuyến mãi không?" (Q&A).
+# So với cách cũ (substring `in`), logic này:
+#   1) Khớp chính xác giá trị nút  → trigger ngay
+#   2) Có pattern intent mạnh (động từ + đặt/book) → trigger
+#   3) Có từ "đặt/book" + dấu hiệu câu hỏi → KHÔNG trigger (đẩy qua Gemini)
+#   4) Câu rất ngắn (≤4 từ) có từ đặt phòng & không phải hỏi → trigger
+BOOKING_BUTTON_VALUES = {
+    "đặt phòng", "dat phong", "booking", "book", "book a room",
+    "book room", "reserve", "reservation", "make a booking",
+    "make a reservation", "đặt", "i want to book", "i'd like to book",
+}
+
+BOOKING_INTENT_PATTERNS = [
+    # VI: "muốn/mún/cần/định/tính/tôi/tui/mình/em/anh + (vài từ) + đặt phòng/book/reserve"
+    re.compile(
+        r"(muốn|mu[oôố]n|m[uú]n|cần|c[aâầ]n|định|đjnh|tính|t[uô]i|mình|mìn|em\b|anh\b|chị\b|cho)"
+        r"\s+\w{0,16}\s*"
+        r"(đặt\s*(phòng|chỗ|ph[oòóọ]ng)?|đ[aă]t\s*phong|book\w*|reserve\w*)",
+        re.IGNORECASE
+    ),
+    # VI: "đặt giúp/cho/hộ/dùm"
+    re.compile(r"\bđặt\s+(giúp|cho|hộ|dùm|du?m|hô)\b", re.IGNORECASE),
+    # VI: "đặt 1 phòng / đặt 2 phòng / đặt phòng 2 đêm"
+    re.compile(r"\bđặt\s+\d+\s*(phòng|ph[oò]ng)?", re.IGNORECASE),
+    # VI: "đặt phòng đi/giúp/luôn/nhé/nha/với"
+    re.compile(r"\bđặt\s*(phòng|ph[oò]ng)?\s+(đi|giúp|luôn|nhé|nha|với|dy|đy)\b", re.IGNORECASE),
+    # EN: "i/we want|need|would like|'d like|wanna ... book|reserve|make a (booking|reservation)"
+    re.compile(
+        r"\b(i|we)\s+(want|need|would\s+like|'?d\s+like|wanna|gonna|plan\s+to|am\s+going\s+to)\s+to\s+"
+        r"(book|reserve|make\s+a\s+(booking|reservation))",
+        re.IGNORECASE
+    ),
+    # "book a room", "book me a single room", "reserve two nights"...
+    re.compile(r"\b(book|reserve)\s+\w+(\s+\w+){0,4}\s+(room|rooms|night|nights|suite|stay)\b", re.IGNORECASE),
+    re.compile(r"\bmake\s+(a|the)\s+(booking|reservation)", re.IGNORECASE),
+    re.compile(r"\blet'?s\s+book\b", re.IGNORECASE),
+    re.compile(r"\b(can|could|may)\s+(i|we)\s+book\s+(a|the|me|us)?\s*\w*\s*(room|night|suite)?", re.IGNORECASE),
+]
+
+# Dấu hiệu câu hỏi — nếu xuất hiện cùng từ booking, coi là Q&A info
+QUESTION_MARKERS = (
+    "?",
+    # VI question words
+    "thế nào", "the nao", "ra sao", "như nào", "nhu nao", "như thế nào",
+    "làm sao", "lam sao", "làm thế nào", "có thể", "co the",
+    "được không", "duoc khong", "có được", "co duoc", "có ko", "co ko",
+    "là gì", "la gi", "là sao", "la sao", "bao nhiêu", "bao nhieu",
+    "chính sách", "chinh sach", "quy trình", "quy trinh",
+    "hướng dẫn", "huong dan", "có nhận", "co nhan",
+    "có cho", "co cho", "tại sao", "tai sao", "khi nào", "khi nao",
+    "ở đâu", "o dau",
+    # EN question words
+    "what ", "what's", "what is", "how ", "how's", "how to", "how do",
+    "when ", "where ", "why ", "which ", "who ",
+    "is it", "are you", "do you", "can i have info", "is there",
+    "are there", "do i need", "should i", "would you mind",
+    "tell me about", "explain",
+)
+# Một vài từ booking cơ bản để check kết hợp với question marker
+BOOKING_WORDS_VI = ("đặt phòng", "dat phong", "đặt chỗ")
+BOOKING_WORDS_EN = ("book", "booking", "reserve", "reservation")
+
+
+def is_booking_intent(msg_lower):
+    """Phát hiện ý định đặt phòng. Logic 4 tầng:
+       1) Exact button match  → trigger
+       2) Có từ booking + có dấu hiệu câu hỏi → KHÔNG trigger (Q&A)
+       3) Match pattern intent mạnh                → trigger
+       4) Có từ booking + câu ≤4 từ (vd 'đặt phòng nhé') → trigger
+    """
+    msg = (msg_lower or "").strip()
+    if not msg:
+        return False
+
+    # 1) Exact button match
+    if msg in BOOKING_BUTTON_VALUES:
+        return True
+
+    has_vi = any(w in msg for w in BOOKING_WORDS_VI)
+    has_en = bool(re.search(r"\b(book|booking|reserve|reservation)\b", msg))
+    has_booking_word = has_vi or has_en
+
+    # 2) Câu hỏi đi kèm từ booking → Q&A
+    if has_booking_word:
+        for q in QUESTION_MARKERS:
+            if q in msg:
+                return False
+
+    # 3) Pattern intent
+    for pat in BOOKING_INTENT_PATTERNS:
+        if pat.search(msg):
+            return True
+
+    # 4) Câu ngắn + có từ booking → trigger
+    if has_booking_word:
+        word_count = len(re.findall(r"\w+", msg))
+        if word_count <= 4:
+            return True
+
+    return False
+
+
 def build_rooms_picker(lang, avail):
     """Tạo payload quantity_picker cho frontend dựa trên số phòng còn trống."""
     label_map = {
@@ -631,11 +734,7 @@ def chat():
                 return jsonify({"reply": tr(lang, "book_cancel"), "lang": lang})
 
     # ================== START BOOKING ==================
-    booking_triggers = [
-        "đặt phòng", "dat phong", "đặt", "booking", "book",
-        "book a room", "book room", "reserve", "reservation"
-    ]
-    if any(k in msg_lower for k in booking_triggers):
+    if is_booking_intent(msg_lower):
         session.clear()
         session["step"] = "checkin"
         session["booking"] = {}
