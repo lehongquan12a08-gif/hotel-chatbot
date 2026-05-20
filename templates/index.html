@@ -357,6 +357,67 @@ header {
 .qty-submit:hover:not(:disabled) { background: rgba(138, 90, 0, 0.8); }
 .qty-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ===== DATE PICKER ===== */
+.date-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.date-picker-label {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  opacity: 0.6;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.date-input {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(138, 90, 0, 0.5);
+  border-radius: 8px;
+  color: white;
+  padding: 9px 12px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  width: 100%;
+  cursor: pointer;
+  color-scheme: dark;
+  transition: border-color 0.2s;
+}
+
+.date-input:focus { outline: none; border-color: rgba(138, 90, 0, 0.9); }
+.date-input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.date-confirm-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(138, 90, 0, 0.7);
+  background: rgba(138, 90, 0, 0.45);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.date-confirm-btn:hover:not(:disabled) { background: rgba(138, 90, 0, 0.8); }
+.date-confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.date-hint {
+  font-size: 10px;
+  opacity: 0;
+  color: #ff9b9b;
+  transition: opacity 0.2s;
+}
+.date-hint.show { opacity: 1; }
+
 #input-area { display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
 
 #input-area input {
@@ -556,7 +617,7 @@ function addUser(text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-function addBot(text, buttons, qtyPicker) {
+function addBot(text, buttons, qtyPicker, datePicker) {
   buttons = buttons || [];
   const d = document.createElement("div");
   d.className = "msg bot";
@@ -582,7 +643,71 @@ function addBot(text, buttons, qtyPicker) {
     renderQtyPicker(qtyPicker);
   }
 
+  if (datePicker && datePicker.step) {
+    renderDatePicker(datePicker);
+  }
+
   messages.scrollTop = messages.scrollHeight;
+}
+
+function renderDatePicker(picker) {
+  const wrap = document.createElement("div");
+  wrap.className = "date-picker-wrap";
+
+  // Label
+  const label = document.createElement("div");
+  label.className = "date-picker-label";
+  if (picker.step === "checkin") {
+    label.textContent = currentLang === "vi" ? "📅 Chọn ngày nhận phòng" : "📅 Select check-in date";
+  } else {
+    label.textContent = currentLang === "vi" ? "📅 Chọn ngày trả phòng" : "📅 Select check-out date";
+  }
+  wrap.appendChild(label);
+
+  // Input date
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.className = "date-input";
+  if (picker.min) dateInput.min = picker.min;
+  if (picker.max) dateInput.max = picker.max;
+  wrap.appendChild(dateInput);
+
+  // Hint (ẩn, chỉ hiện khi không chọn ngày)
+  const hint = document.createElement("div");
+  hint.className = "date-hint";
+  hint.textContent = currentLang === "vi"
+    ? "Vui lòng chọn một ngày trước khi xác nhận."
+    : "Please select a date before confirming.";
+  wrap.appendChild(hint);
+
+  // Confirm button
+  const btn = document.createElement("button");
+  btn.className = "date-confirm-btn";
+  btn.type = "button";
+  btn.textContent = currentLang === "vi" ? "✅ Xác nhận ngày này" : "✅ Confirm this date";
+
+  btn.onclick = () => {
+    if (!dateInput.value) {
+      hint.classList.add("show");
+      return;
+    }
+    hint.classList.remove("show");
+
+    // Chuyển YYYY-MM-DD → DD/MM/YYYY
+    const [y, m, d] = dateInput.value.split("-");
+    const formatted = `${d}/${m}/${y}`;
+
+    // Khoá widget lại
+    dateInput.disabled = true;
+    btn.disabled = true;
+
+    // Hiện bubble người dùng và gửi
+    addUser(formatted);
+    sendRaw(formatted);
+  };
+
+  wrap.appendChild(btn);
+  messages.appendChild(wrap);
 }
 
 function renderQtyPicker(picker) {
@@ -724,7 +849,7 @@ async function postChat(text) {
       localStorage.setItem("eden_lang", currentLang);
       applyI18n();
     }
-    addBot(data.reply, data.buttons || [], data.quantity_picker);
+    addBot(data.reply, data.buttons || [], data.quantity_picker, data.date_picker);
   } catch (err) {
     addBot(t("err_connection"));
   }

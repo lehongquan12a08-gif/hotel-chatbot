@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session
 import os
 import re
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import google.generativeai as genai
 
 # ================== IMPORT GOOGLE SHEET HELPERS (with fallbacks) ==================
@@ -663,13 +663,23 @@ def chat():
         if step == "checkin":
             checkin_str = normalize_date(msg)
             try:
-                datetime.strptime(checkin_str, "%d/%m/%Y")
+                checkin_dt = datetime.strptime(checkin_str, "%d/%m/%Y")
             except ValueError:
-                return jsonify({"reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkin"), "lang": lang})
+                today_iso = date.today().strftime("%Y-%m-%d")
+                return jsonify({
+                    "reply": tr(lang, "invalid_date_format") + " " + tr(lang, "ask_checkin"),
+                    "lang": lang,
+                    "date_picker": {"step": "checkin", "min": today_iso}
+                })
             b["checkin"] = checkin_str
             session["booking"] = b
             session["step"] = "checkout"
-            return jsonify({"reply": tr(lang, "ask_checkout"), "lang": lang})
+            min_checkout_iso = (checkin_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+            return jsonify({
+                "reply": tr(lang, "ask_checkout"),
+                "lang": lang,
+                "date_picker": {"step": "checkout", "min": min_checkout_iso}
+            })
 
         if step == "checkout":
             checkout_str = normalize_date(msg)
@@ -836,7 +846,12 @@ def chat():
         session["step"] = "checkin"
         session["booking"] = {}
         session["lang"] = lang
-        return jsonify({"reply": tr(lang, "ask_checkin"), "lang": lang})
+        today_iso = date.today().strftime("%Y-%m-%d")
+        return jsonify({
+            "reply": tr(lang, "ask_checkin"),
+            "lang": lang,
+            "date_picker": {"step": "checkin", "min": today_iso}
+        })
 
     # ================== GEMINI ==================
     try:
