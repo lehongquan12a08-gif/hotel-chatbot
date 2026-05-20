@@ -29,6 +29,41 @@ except Exception as _e:
         pass
 
 try:
+    from google_sheet import get_available_counts
+except Exception as _e:
+    print("WARN: cannot import get_available_counts:", _e)
+    def get_available_counts(*a, **k):
+        # Fallback: chấp nhận đặt nếu không tra được
+        return {"Phòng đơn": 99, "Phòng đôi": 99, "Suite": 99}
+
+try:
+    from google_sheet import are_rooms_available
+except Exception as _e:
+    print("WARN: cannot import are_rooms_available:", _e)
+    def are_rooms_available(checkin, checkout, rooms_dict):
+        # Fallback: dựa vào is_room_available cho từng loại có qty > 0
+        try:
+            for t, q in (rooms_dict or {}).items():
+                if int(q or 0) > 0 and not is_room_available(checkin, checkout, t):
+                    return False
+            return True
+        except Exception:
+            return True
+
+try:
+    from google_sheet import subtract_multi_rooms
+except Exception as _e:
+    print("WARN: cannot import subtract_multi_rooms:", _e)
+    def subtract_multi_rooms(checkin, checkout, rooms_dict):
+        # Fallback: gọi subtract_rooms từng loại, qty lần
+        for t, q in (rooms_dict or {}).items():
+            for _ in range(int(q or 0)):
+                try:
+                    subtract_rooms(checkin, checkout, t)
+                except Exception:
+                    pass
+
+try:
     from google_sheet import normalize_date
 except Exception as _e:
     print("WARN: cannot import normalize_date, using local fallback:", _e)
@@ -159,14 +194,19 @@ T = {
         "empty": "Quý khách vui lòng nhập nội dung 😊",
         "ask_checkin": "Xin hãy cho biết ngày nhận phòng! (DD/MM/YYYY)",
         "ask_checkout": "Xin hãy cho biết ngày trả phòng! (DD/MM/YYYY)",
-        "ask_room": "Hãy loại phòng:",
+        "ask_rooms_qty": "Quý khách muốn đặt bao nhiêu phòng mỗi loại? (Bấm − / + để chọn rồi nhấn Xong)",
         "ask_name": "Hãy cho biết tên của quý khách",
         "ask_phone": "Số điện thoại liên hệ",
-        "btn_single": "🛏 Phòng đơn ",
-        "btn_double": "🛏🛏 Phòng đôi ",
-        "btn_suite": "👑 Suite ",
+        "ask_note": "Quý khách có ghi chú gì thêm không? (gõ nội dung hoặc bấm Bỏ qua)",
+        "btn_single": "🛏 Phòng đơn",
+        "btn_double": "🛏🛏 Phòng đôi",
+        "btn_suite": "👑 Suite",
+        "btn_done": "✅ Xong",
+        "btn_skip": "↪️ Bỏ qua",
         "btn_confirm": "✅ Xác nhận đặt phòng",
         "btn_cancel": "❌ Hủy",
+        "available_left": "còn {n}",
+        "sold_out": "hết phòng",
         "summary_title": "📋 Xác nhận đặt phòng:",
         "s_checkin": "Check-in",
         "s_checkout": "Check-out",
@@ -174,9 +214,11 @@ T = {
         "s_room": "Phòng",
         "s_name": "Tên",
         "s_phone": "SĐT",
+        "s_note": "Ghi chú",
         "s_total": "Tổng tiền",
         "s_deposit": "Đặt cọc 30%",
         "no_room": "❌ Phòng đã hết trong khoảng thời gian này. Vui lòng chọn ngày khác.",
+        "no_room_selected": "Quý khách vui lòng chọn ít nhất 1 phòng.",
         "book_error": "❌ Có lỗi xảy ra khi đặt phòng. Vui lòng thử lại.",
         "book_success": "🎉 Đặt phòng thành công!\nKhách sạn sẽ liên hệ xác nhận và hướng dẫn đặt cọc sớm nhất.\nCảm ơn quý khách! 🙏",
         "book_cancel": "Đã hủy đặt phòng. Quý khách cần hỗ trợ gì thêm không? 😊",
@@ -187,14 +229,19 @@ T = {
         "empty": "Please type a message 😊",
         "ask_checkin": "Check-in date (DD/MM/YYYY)",
         "ask_checkout": "Check-out date (DD/MM/YYYY)",
-        "ask_room": "Choose a room type:",
+        "ask_rooms_qty": "How many rooms of each type would you like? (Use − / + then press Done)",
         "ask_name": "Your name, please?",
         "ask_phone": "Contact phone number?",
-        "btn_single": "🛏 Single ",
-        "btn_double": "🛏🛏 Double ",
-        "btn_suite": "👑 Suite ",
+        "ask_note": "Any extra notes? (Type a note or press Skip)",
+        "btn_single": "🛏 Single",
+        "btn_double": "🛏🛏 Double",
+        "btn_suite": "👑 Suite",
+        "btn_done": "✅ Done",
+        "btn_skip": "↪️ Skip",
         "btn_confirm": "✅ Confirm booking",
         "btn_cancel": "❌ Cancel",
+        "available_left": "{n} left",
+        "sold_out": "sold out",
         "summary_title": "📋 Booking confirmation:",
         "s_checkin": "Check-in",
         "s_checkout": "Check-out",
@@ -202,9 +249,11 @@ T = {
         "s_room": "Room",
         "s_name": "Name",
         "s_phone": "Phone",
+        "s_note": "Note",
         "s_total": "Total",
         "s_deposit": "30% deposit",
         "no_room": "❌ No rooms available for those dates. Please choose other dates.",
+        "no_room_selected": "Please select at least one room.",
         "book_error": "❌ Something went wrong while booking. Please try again.",
         "book_success": "🎉 Booking successful!\nThe hotel will contact you shortly to confirm and guide the deposit.\nThank you! 🙏",
         "book_cancel": "Booking cancelled. Anything else I can help with? 😊",
@@ -332,6 +381,84 @@ ROOM_DISPLAY = {
     "en": {"Phòng đơn": "Single room", "Phòng đôi": "Double room", "Suite": "Suite"},
 }
 
+# Thứ tự cố định để truyền giữa frontend ↔ backend
+ROOM_ORDER = ["Phòng đơn", "Phòng đôi", "Suite"]
+
+ROOMS_PICK_PREFIX = "__rooms_pick__:"
+
+
+def parse_rooms_pick(msg):
+    """
+    Parse chuỗi do frontend gửi sau khi khách bấm "Xong":
+    "__rooms_pick__:1,2,0" → {"Phòng đơn": 1, "Phòng đôi": 2, "Suite": 0}
+    Trả về None nếu không đúng format.
+    """
+    if not msg or not msg.startswith(ROOMS_PICK_PREFIX):
+        return None
+    try:
+        raw = msg[len(ROOMS_PICK_PREFIX):]
+        parts = [p.strip() for p in raw.split(",")]
+        if len(parts) != len(ROOM_ORDER):
+            return None
+        qty = [max(0, int(p)) for p in parts]
+        return {ROOM_ORDER[i]: qty[i] for i in range(len(ROOM_ORDER))}
+    except Exception:
+        return None
+
+
+def format_rooms_summary(rooms, lang="vi"):
+    """Chuyển dict rooms thành chuỗi hiển thị: '1 Phòng đơn, 2 Phòng đôi'."""
+    parts = []
+    display_map = ROOM_DISPLAY.get(lang, ROOM_DISPLAY["vi"])
+    for room_type in ROOM_ORDER:
+        qty = int((rooms or {}).get(room_type, 0) or 0)
+        if qty > 0:
+            parts.append(f"{qty} {display_map.get(room_type, room_type)}")
+    return ", ".join(parts)
+
+
+def total_rooms_count(rooms):
+    return sum(int((rooms or {}).get(t, 0) or 0) for t in ROOM_ORDER)
+
+
+def calc_rooms_total(rooms, nights):
+    """Tổng tiền = Σ qty × giá × số đêm."""
+    prices = get_room_prices()
+    total = 0
+    for room_type in ROOM_ORDER:
+        qty = int((rooms or {}).get(room_type, 0) or 0)
+        if qty > 0:
+            total += qty * prices.get(room_type, 0) * nights
+    return total
+
+
+def build_rooms_picker(lang, avail):
+    """Tạo payload quantity_picker cho frontend dựa trên số phòng còn trống."""
+    label_map = {
+        "Phòng đơn": tr(lang, "btn_single"),
+        "Phòng đôi": tr(lang, "btn_double"),
+        "Suite":     tr(lang, "btn_suite"),
+    }
+    items = []
+    for room_type in ROOM_ORDER:
+        n = int((avail or {}).get(room_type, 0) or 0)
+        if n > 0:
+            avail_text = tr(lang, "available_left").format(n=n)
+        else:
+            avail_text = tr(lang, "sold_out")
+        items.append({
+            "key": room_type,
+            "label": label_map.get(room_type, room_type),
+            "available": n,
+            "max": n,
+            "available_text": avail_text,
+        })
+    return {
+        "items": items,
+        "submit_label": tr(lang, "btn_done"),
+        "submit_prefix": ROOMS_PICK_PREFIX,
+    }
+
 # ================== ROUTES ==================
 @app.route("/")
 def home():
@@ -365,19 +492,47 @@ def chat():
         if step == "checkout":
             b["checkout"] = normalize_date(msg)
             session["booking"] = b
-            session["step"] = "room"
+            session["step"] = "rooms"
+
+            # Lấy số phòng trống tối thiểu trên dải ngày để hiển thị
+            try:
+                avail = get_available_counts(b["checkin"], b["checkout"]) or {}
+            except Exception as _e:
+                print("WARN: get_available_counts:", _e)
+                avail = {t: 0 for t in ROOM_ORDER}
+
             return jsonify({
-                "reply": tr(lang, "ask_room"),
+                "reply": tr(lang, "ask_rooms_qty"),
                 "lang": lang,
-                "buttons": [
-                    {"label": tr(lang, "btn_single"), "value": "Single"},
-                    {"label": tr(lang, "btn_double"), "value": "Double"},
-                    {"label": tr(lang, "btn_suite"),  "value": "Suite"}
-                ]
+                "quantity_picker": build_rooms_picker(lang, avail),
             })
 
-        if step == "room":
-            b["room"] = normalize_room(msg)
+        if step == "rooms":
+            rooms = parse_rooms_pick(msg)
+            if rooms is None:
+                # Khách gõ tay thay vì bấm nút — hiện lại picker
+                try:
+                    avail = get_available_counts(b.get("checkin"), b.get("checkout")) or {}
+                except Exception:
+                    avail = {t: 0 for t in ROOM_ORDER}
+                return jsonify({
+                    "reply": tr(lang, "ask_rooms_qty"),
+                    "lang": lang,
+                    "quantity_picker": build_rooms_picker(lang, avail),
+                })
+
+            if total_rooms_count(rooms) <= 0:
+                try:
+                    avail = get_available_counts(b.get("checkin"), b.get("checkout")) or {}
+                except Exception:
+                    avail = {t: 0 for t in ROOM_ORDER}
+                return jsonify({
+                    "reply": tr(lang, "no_room_selected"),
+                    "lang": lang,
+                    "quantity_picker": build_rooms_picker(lang, avail),
+                })
+
+            b["rooms"] = rooms
             session["booking"] = b
             session["step"] = "name"
             return jsonify({"reply": tr(lang, "ask_name"), "lang": lang})
@@ -391,14 +546,26 @@ def chat():
         if step == "phone":
             b["phone"] = msg
             session["booking"] = b
+            session["step"] = "note"
+            return jsonify({
+                "reply": tr(lang, "ask_note"),
+                "lang": lang,
+                "buttons": [
+                    {"label": tr(lang, "btn_skip"), "value": "skip"}
+                ]
+            })
+
+        if step == "note":
+            note = "" if msg_lower in ("skip", "bỏ qua", "bo qua") else msg
+            b["note"] = note
+            session["booking"] = b
             session["step"] = "confirm"
 
             try:
                 checkin_dt = datetime.strptime(b["checkin"], "%d/%m/%Y")
                 checkout_dt = datetime.strptime(b["checkout"], "%d/%m/%Y")
                 nights = (checkout_dt - checkin_dt).days
-                price_per_night = get_room_prices().get(b["room"], 0)
-                total = nights * price_per_night
+                total = calc_rooms_total(b.get("rooms", {}), nights)
                 if lang == "en":
                     total_str = f"{total:,.0f} VND"
                     deposit_str = f"{int(total * 0.3):,.0f} VND"
@@ -411,18 +578,21 @@ def chat():
                 total_str = "N/A"
                 deposit_str = "N/A"
 
-            room_display = ROOM_DISPLAY.get(lang, {}).get(b["room"], b["room"])
+            rooms_display = format_rooms_summary(b.get("rooms", {}), lang)
 
-            summary = (
-                f"{tr(lang, 'summary_title')}\n"
-                f"• {tr(lang, 's_checkin')}: {b['checkin']}\n"
-                f"• {tr(lang, 's_checkout')}: {b['checkout']} ({nights_str})\n"
-                f"• {tr(lang, 's_room')}: {room_display}\n"
-                f"• {tr(lang, 's_name')}: {b['name']}\n"
-                f"• {tr(lang, 's_phone')}: {b['phone']}\n"
-                f"• {tr(lang, 's_total')}: {total_str}\n"
-                f"• {tr(lang, 's_deposit')}: {deposit_str}"
-            )
+            lines = [
+                f"{tr(lang, 'summary_title')}",
+                f"• {tr(lang, 's_checkin')}: {b['checkin']}",
+                f"• {tr(lang, 's_checkout')}: {b['checkout']} ({nights_str})",
+                f"• {tr(lang, 's_room')}: {rooms_display}",
+                f"• {tr(lang, 's_name')}: {b['name']}",
+                f"• {tr(lang, 's_phone')}: {b['phone']}",
+            ]
+            if note:
+                lines.append(f"• {tr(lang, 's_note')}: {note}")
+            lines.append(f"• {tr(lang, 's_total')}: {total_str}")
+            lines.append(f"• {tr(lang, 's_deposit')}: {deposit_str}")
+            summary = "\n".join(lines)
 
             return jsonify({
                 "reply": summary,
@@ -436,13 +606,18 @@ def chat():
         if step == "confirm":
             if msg_lower == "confirm":
                 try:
-                    if not is_room_available(b["checkin"], b["checkout"], b["room"]):
+                    rooms = b.get("rooms", {})
+                    if not are_rooms_available(b["checkin"], b["checkout"], rooms):
                         session.clear()
                         return jsonify({"reply": tr(lang, "no_room"), "lang": lang})
 
-                    b["note"] = ""
-                    save_booking(b)
-                    subtract_rooms(b["checkin"], b["checkout"], b["room"])
+                    # Lưu chuỗi "1 Phòng đơn, 2 Phòng đôi" vào ô Loại phòng (luôn VI để
+                    # đồng bộ dữ liệu trên sheet).
+                    save_payload = dict(b)
+                    save_payload["room"] = format_rooms_summary(rooms, "vi")
+                    save_payload["note"] = b.get("note", "")
+                    save_booking(save_payload)
+                    subtract_multi_rooms(b["checkin"], b["checkout"], rooms)
 
                 except Exception as e:
                     print("ERROR:", e)

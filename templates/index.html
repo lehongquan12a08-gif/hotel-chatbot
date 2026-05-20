@@ -265,6 +265,98 @@ header {
 
 .quick-btn:hover { background: rgba(138, 90, 0, 0.7); }
 
+.qty-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qty-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.qty-label {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qty-avail {
+  font-size: 10px;
+  opacity: 0.6;
+  letter-spacing: 0.5px;
+  margin-top: 1px;
+}
+
+.qty-avail.zero { color: #ff9b9b; opacity: 0.8; }
+
+.qty-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(138, 90, 0, 0.7);
+  background: rgba(138, 90, 0, 0.25);
+  color: white;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.qty-btn:hover:not(:disabled) { background: rgba(138, 90, 0, 0.7); }
+.qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.qty-value {
+  min-width: 18px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.qty-submit {
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(138, 90, 0, 0.7);
+  background: rgba(138, 90, 0, 0.45);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.qty-submit:hover:not(:disabled) { background: rgba(138, 90, 0, 0.8); }
+.qty-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
 #input-area { display: flex; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
 
 #input-area input {
@@ -462,7 +554,7 @@ function addUser(text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-function addBot(text, buttons) {
+function addBot(text, buttons, qtyPicker) {
   buttons = buttons || [];
   const d = document.createElement("div");
   d.className = "msg bot";
@@ -484,7 +576,120 @@ function addBot(text, buttons) {
     messages.appendChild(wrap);
   }
 
+  if (qtyPicker && Array.isArray(qtyPicker.items) && qtyPicker.items.length) {
+    renderQtyPicker(qtyPicker);
+  }
+
   messages.scrollTop = messages.scrollHeight;
+}
+
+function renderQtyPicker(picker) {
+  const wrap = document.createElement("div");
+  wrap.className = "qty-picker";
+
+  // Trạng thái số lượng cho lần render này
+  const state = picker.items.map(it => ({
+    key: it.key,
+    max: Math.max(0, parseInt(it.max, 10) || 0),
+    qty: 0
+  }));
+
+  const rowEls = [];
+
+  picker.items.forEach((it, i) => {
+    const max = Math.max(0, parseInt(it.max, 10) || 0);
+
+    const row = document.createElement("div");
+    row.className = "qty-row";
+
+    const info = document.createElement("div");
+    info.className = "qty-info";
+    const lbl = document.createElement("div");
+    lbl.className = "qty-label";
+    lbl.textContent = it.label;
+    const av = document.createElement("div");
+    av.className = "qty-avail" + (max <= 0 ? " zero" : "");
+    av.textContent = it.available_text || "";
+    info.appendChild(lbl);
+    info.appendChild(av);
+
+    const ctrl = document.createElement("div");
+    ctrl.className = "qty-ctrl";
+    const minus = document.createElement("button");
+    minus.className = "qty-btn";
+    minus.type = "button";
+    minus.textContent = "−";
+    const val = document.createElement("span");
+    val.className = "qty-value";
+    val.textContent = "0";
+    const plus = document.createElement("button");
+    plus.className = "qty-btn";
+    plus.type = "button";
+    plus.textContent = "+";
+
+    function refresh() {
+      val.textContent = String(state[i].qty);
+      minus.disabled = state[i].qty <= 0;
+      plus.disabled = state[i].qty >= state[i].max;
+      updateSubmit();
+    }
+
+    minus.onclick = () => {
+      if (state[i].qty > 0) { state[i].qty -= 1; refresh(); }
+    };
+    plus.onclick = () => {
+      if (state[i].qty < state[i].max) { state[i].qty += 1; refresh(); }
+    };
+
+    if (max <= 0) {
+      minus.disabled = true;
+      plus.disabled = true;
+    }
+
+    ctrl.appendChild(minus);
+    ctrl.appendChild(val);
+    ctrl.appendChild(plus);
+
+    row.appendChild(info);
+    row.appendChild(ctrl);
+    wrap.appendChild(row);
+    rowEls.push({ minus, plus, val });
+  });
+
+  const submit = document.createElement("button");
+  submit.className = "qty-submit";
+  submit.type = "button";
+  submit.textContent = picker.submit_label || "✅ Done";
+  submit.disabled = true;
+
+  function updateSubmit() {
+    const total = state.reduce((s, x) => s + x.qty, 0);
+    submit.disabled = total <= 0;
+  }
+
+  submit.onclick = () => {
+    const total = state.reduce((s, x) => s + x.qty, 0);
+    if (total <= 0) return;
+    // Vô hiệu hoá picker này để khách không bấm lại
+    rowEls.forEach(r => { r.minus.disabled = true; r.plus.disabled = true; });
+    submit.disabled = true;
+    const prefix = picker.submit_prefix || "__rooms_pick__:";
+    const payload = prefix + state.map(x => x.qty).join(",");
+    // Hiển thị tóm tắt chọn cho khách
+    const summary = state
+      .filter(x => x.qty > 0)
+      .map(x => {
+        const it = picker.items.find(it => it.key === x.key);
+        const label = it ? it.label : x.key;
+        return `${x.qty} × ${label}`;
+      })
+      .join(", ");
+    addUser(summary || "—");
+    sendRaw(payload);
+  };
+
+  wrap.appendChild(submit);
+  messages.appendChild(wrap);
 }
 
 async function send(override) {
@@ -493,7 +698,17 @@ async function send(override) {
 
   addUser(text);
   input.value = "";
+  await postChat(text);
+}
 
+async function sendRaw(payload) {
+  // Gửi payload nội bộ (ví dụ __rooms_pick__:1,2,0) — không tự thêm bubble khách
+  if (!payload) return;
+  input.value = "";
+  await postChat(payload);
+}
+
+async function postChat(text) {
   try {
     const res = await fetch("/chat", {
       method: "POST",
@@ -507,7 +722,7 @@ async function send(override) {
       localStorage.setItem("eden_lang", currentLang);
       applyI18n();
     }
-    addBot(data.reply, data.buttons || []);
+    addBot(data.reply, data.buttons || [], data.quantity_picker);
   } catch (err) {
     addBot(t("err_connection"));
   }

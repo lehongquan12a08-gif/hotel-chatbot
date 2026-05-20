@@ -2,7 +2,7 @@ import os, json, gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 
-# ================= CONFIG =================
+# ================= CONFIG (multi-room support) =================
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -183,6 +183,88 @@ def is_room_available(checkin, checkout, room_type):
     except Exception as e:
         print("❌ check availability:", e)
         return False
+
+
+# ================= MULTI-ROOM HELPERS =================
+ROOM_TYPES = ["Phòng đơn", "Phòng đôi", "Suite"]
+
+
+def get_available_counts(checkin, checkout):
+    """
+    Tra cứu số phòng trống TỐI THIỂU của từng loại trên toàn dải ngày
+    [checkin, checkout). Trả về dict, ví dụ: {"Phòng đơn": 3, "Phòng đôi": 2, "Suite": 1}.
+    Nếu lỗi/không có dữ liệu thì trả 0 cho loại đó.
+    """
+    try:
+        start = datetime.strptime(normalize_date(checkin), DATE_FORMAT)
+        end = datetime.strptime(normalize_date(checkout), DATE_FORMAT)
+        if end <= start:
+            return {t: 0 for t in ROOM_TYPES}
+
+        mins = {t: None for t in ROOM_TYPES}
+        cur = start
+        while cur < end:
+            date_str = cur.strftime(DATE_FORMAT)
+            rooms = get_room_by_date(date_str) or {}
+            for t in ROOM_TYPES:
+                val = int(rooms.get(t, 0) or 0)
+                if mins[t] is None or val < mins[t]:
+                    mins[t] = val
+            cur += timedelta(days=1)
+
+        return {t: (mins[t] if mins[t] is not None else 0) for t in ROOM_TYPES}
+
+    except Exception as e:
+        print("❌ get_available_counts:", e)
+        return {t: 0 for t in ROOM_TYPES}
+
+
+def are_rooms_available(checkin, checkout, rooms_dict):
+    """
+    Kiểm tra mọi loại phòng trong rooms_dict (dạng {type: qty}) đều còn đủ
+    trên toàn dải ngày. Bỏ qua loại có qty <= 0.
+    """
+    try:
+        wanted = {normalize_room_type(k): int(v) for k, v in (rooms_dict or {}).items()
+                  if int(v or 0) > 0}
+        if not wanted:
+            return False
+
+        avail = get_available_counts(checkin, checkout)
+        for room_type, qty in wanted.items():
+            if avail.get(room_type, 0) < qty:
+                return False
+        return True
+
+    except Exception as e:
+        print("❌ are_rooms_available:", e)
+        return False
+
+
+def subtract_multi_rooms(checkin, checkout, rooms_dict):
+    """
+    Trừ số phòng đã đặt cho mỗi loại trên toàn dải ngày [checkin, checkout).
+    rooms_dict dạng {"Phòng đơn": 1, "Phòng đôi": 2, ...}.
+    """
+    try:
+        start = datetime.strptime(normalize_date(checkin), DATE_FORMAT)
+        end = datetime.strptime(normalize_date(checkout), DATE_FORMAT)
+
+        wanted = {normalize_room_type(k): int(v) for k, v in (rooms_dict or {}).items()
+                  if int(v or 0) > 0}
+        if not wanted:
+            return
+
+        cur = start
+        while cur < end:
+            date_str = cur.strftime(DATE_FORMAT)
+            for room_type, qty in wanted.items():
+                for _ in range(qty):
+                    update_room_after_booking(date_str, room_type)
+            cur += timedelta(days=1)
+
+    except Exception as e:
+        print("❌ subtract_multi_rooms:", e)
 
 # ================= UPDATE ROOM =================
 def update_room_after_booking(date, room_type):
