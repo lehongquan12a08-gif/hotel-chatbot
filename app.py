@@ -91,35 +91,34 @@ try:
 except Exception as _e:
     print("WARN: cannot import build_hotel_info, using local fallback:", _e)
     def _build_hotel_info_vi(config):
-        def g(k, d=""): return config.get(k, d)
-        return f"""
-Tên khách sạn: {g("hotel_name")}
-Địa chỉ: {g("address")}
-Hotline: {g("hotline")}
-
-Giá phòng:
-- Phòng đơn: {g("price_single")} / đêm
-- Phòng đôi: {g("price_double")} / đêm
-- Phòng Suite: {g("price_suite")} / đêm
-
-Check-in: {g("checkin_time")}
-Check-out: {g("checkout_time")}
-
-Tiện ích:
-{g("amenities")}
-
-Chính sách đặt cọc:
-{g("deposit_policy")}
-
-Thanh toán:
-{g("payment_policy")}
-
-Chính sách hủy:
-{g("cancel_policy")}
-
-Lưu ý:
-{g("note")}
-""".strip()
+        def g(k, d=""): return str(config.get(k, d) or "").strip()
+        def s(title, value):
+            v = (value or "").strip()
+            return f"\n{title}:\n{v}\n" if v else ""
+        parts = [
+            f"Tên khách sạn: {g('hotel_name')}",
+            f"Địa chỉ: {g('address')}",
+            f"Hotline: {g('hotline')}",
+            "",
+            "Giá phòng:",
+            f"- Phòng đơn: {g('price_single')} / đêm",
+            f"- Phòng đôi: {g('price_double')} / đêm",
+            f"- Phòng Suite: {g('price_suite')} / đêm",
+            "",
+            f"Check-in: {g('checkin_time')}",
+            f"Check-out: {g('checkout_time')}",
+        ]
+        body = "\n".join(parts)
+        body += s("Tiện ích", g("amenities"))
+        body += s("Phí dịch vụ tiện ích", g("amenity_fees"))
+        body += s("Khu vui chơi & chụp ảnh gần khách sạn", g("nearby_attractions"))
+        body += s("Sự kiện sắp tới ở Phú Quốc", g("upcoming_events"))
+        body += s("Sự kiện trong khách sạn (lịch hát, hoạt động)", g("hotel_events"))
+        body += s("Chính sách đặt cọc", g("deposit_policy"))
+        body += s("Thanh toán", g("payment_policy"))
+        body += s("Chính sách hủy", g("cancel_policy"))
+        body += s("Lưu ý", g("note"))
+        return body.strip()
 
 app = Flask(__name__)
 app.secret_key = "eden-secret-key"
@@ -283,34 +282,34 @@ def build_hotel_info_en(config):
                 return v
         return default
 
-    return f"""
-Hotel name: {g("hotel_name_en", "hotel_name")}
-Address: {g("address_en", "address")}
-Hotline: {g("hotline")}
+    def s(title, value):
+        v = (value or "").strip()
+        return f"\n{title}:\n{v}\n" if v else ""
 
-Room rates:
-- Single room: {g("price_single")} / night
-- Double room: {g("price_double")} / night
-- Suite: {g("price_suite")} / night
-
-Check-in: {g("checkin_time")}
-Check-out: {g("checkout_time")}
-
-Amenities:
-{g("amenities_en", "amenities")}
-
-Deposit policy:
-{g("deposit_policy_en", "deposit_policy")}
-
-Payment:
-{g("payment_policy_en", "payment_policy")}
-
-Cancellation policy:
-{g("cancel_policy_en", "cancel_policy")}
-
-Note:
-{g("note_en", "note")}
-""".strip()
+    parts = [
+        f"Hotel name: {g('hotel_name_en', 'hotel_name')}",
+        f"Address: {g('address_en', 'address')}",
+        f"Hotline: {g('hotline')}",
+        "",
+        "Room rates:",
+        f"- Single room: {g('price_single')} / night",
+        f"- Double room: {g('price_double')} / night",
+        f"- Suite: {g('price_suite')} / night",
+        "",
+        f"Check-in: {g('checkin_time')}",
+        f"Check-out: {g('checkout_time')}",
+    ]
+    body = "\n".join(parts)
+    body += s("Amenities", g("amenities_en", "amenities"))
+    body += s("Amenity service fees", g("amenity_fees_en", "amenity_fees"))
+    body += s("Nearby attractions & photo spots", g("nearby_attractions_en", "nearby_attractions"))
+    body += s("Upcoming events in Phu Quoc", g("upcoming_events_en", "upcoming_events"))
+    body += s("Hotel events (live music, activities)", g("hotel_events_en", "hotel_events"))
+    body += s("Deposit policy", g("deposit_policy_en", "deposit_policy"))
+    body += s("Payment", g("payment_policy_en", "payment_policy"))
+    body += s("Cancellation policy", g("cancel_policy_en", "cancel_policy"))
+    body += s("Note", g("note_en", "note"))
+    return body.strip()
 
 
 def _expand_newlines(config):
@@ -479,6 +478,8 @@ QUESTION_MARKERS = (
     "thế nào", "the nao", "ra sao", "như nào", "nhu nao", "như thế nào",
     "làm sao", "lam sao", "làm thế nào", "có thể", "co the",
     "được không", "duoc khong", "có được", "co duoc", "có ko", "co ko",
+    "đc không", "đc ko", "dc khong", "dc ko", "đk ko", "đk không",
+    "được ko", "duoc ko",
     "là gì", "la gi", "là sao", "la sao", "bao nhiêu", "bao nhieu",
     "chính sách", "chinh sach", "quy trình", "quy trinh",
     "hướng dẫn", "huong dan", "có nhận", "co nhan",
@@ -491,17 +492,53 @@ QUESTION_MARKERS = (
     "are there", "do i need", "should i", "would you mind",
     "tell me about", "explain",
 )
+
+# Pattern phủ định — nếu match thì câu KHÔNG phải intent đặt phòng,
+# kể cả khi có "muốn đặt phòng" trong câu (vd "ko muốn đặt phòng").
+NEGATION_PATTERNS = [
+    # VI: "ko/không/đừng/chưa/chẳng + (vài từ) + muốn/cần/định + (vài từ) + đặt/book"
+    re.compile(
+        r"\b(không|khong|kh[ôố]ng|ko|đừng|dung|chưa|chua|chẳng|chang|chả\b|cha\b|hổng|hong)\s+"
+        r"\w{0,12}\s*"
+        r"(mu[oôố]n|m[uú]n|cần|c[âầ]n|định|đjnh|tính)\s+"
+        r"\w{0,12}\s*"
+        r"(đặt|d[aă]t\s*phong|book\w*|reserve\w*)",
+        re.IGNORECASE
+    ),
+    # VI: "đừng/chưa + (0-5 từ) + đặt"
+    re.compile(
+        r"\b(đừng|chưa|chẳng|hổng|chả)\s+\w{0,16}\s*(đặt\s*(phòng|chỗ)?|book\w*|reserve\w*)",
+        re.IGNORECASE
+    ),
+    # VI: "ko đặt phòng" / "không đặt phòng" trực tiếp
+    re.compile(
+        r"\b(không|khong|ko|hổng|chẳng)\s+\w{0,3}\s*(đặt\s*(phòng|chỗ)|book\w*|reserve\w*)",
+        re.IGNORECASE
+    ),
+    # EN: "don't/do not/won't + (vài từ) + want|need|like|going + to + book/reserve"
+    re.compile(
+        r"\b(don'?t|do\s+not|won'?t|will\s+not|never|no\s+need\s+to)\s+\w{0,8}\s*"
+        r"(want|need|like|going|plan|intend)\s+to\s+(book|reserve|make)",
+        re.IGNORECASE
+    ),
+    # EN: "not booking", "not interested in booking"
+    re.compile(
+        r"\bnot\s+\w{0,8}\s*(book\w*|reserve\w*|reservation)\b",
+        re.IGNORECASE
+    ),
+]
 # Một vài từ booking cơ bản để check kết hợp với question marker
 BOOKING_WORDS_VI = ("đặt phòng", "dat phong", "đặt chỗ")
 BOOKING_WORDS_EN = ("book", "booking", "reserve", "reservation")
 
 
 def is_booking_intent(msg_lower):
-    """Phát hiện ý định đặt phòng. Logic 4 tầng:
-       1) Exact button match  → trigger
-       2) Có từ booking + có dấu hiệu câu hỏi → KHÔNG trigger (Q&A)
-       3) Match pattern intent mạnh                → trigger
-       4) Có từ booking + câu ≤4 từ (vd 'đặt phòng nhé') → trigger
+    """Phát hiện ý định đặt phòng. Logic 5 tầng (kiểm tra theo thứ tự):
+       1) Exact button match              → trigger
+       2) Match pattern PHỦ ĐỊNH          → KHÔNG trigger ("ko muốn đặt phòng")
+       3) Có booking word + dấu hiệu hỏi  → KHÔNG trigger (Q&A)
+       4) Match pattern intent mạnh       → trigger
+       5) Câu ≤4 từ + có booking word     → trigger ("đặt phòng nhé")
     """
     msg = (msg_lower or "").strip()
     if not msg:
@@ -511,28 +548,49 @@ def is_booking_intent(msg_lower):
     if msg in BOOKING_BUTTON_VALUES:
         return True
 
+    # 2) Phủ định → reject ngay
+    for pat in NEGATION_PATTERNS:
+        if pat.search(msg):
+            return False
+
     has_vi = any(w in msg for w in BOOKING_WORDS_VI)
     has_en = bool(re.search(r"\b(book|booking|reserve|reservation)\b", msg))
     has_booking_word = has_vi or has_en
 
-    # 2) Câu hỏi đi kèm từ booking → Q&A
+    # 3) Câu hỏi đi kèm từ booking → Q&A
     if has_booking_word:
         for q in QUESTION_MARKERS:
             if q in msg:
                 return False
 
-    # 3) Pattern intent
+    # 4) Pattern intent
     for pat in BOOKING_INTENT_PATTERNS:
         if pat.search(msg):
             return True
 
-    # 4) Câu ngắn + có từ booking → trigger
+    # 5) Câu ngắn + có từ booking → trigger
     if has_booking_word:
         word_count = len(re.findall(r"\w+", msg))
         if word_count <= 4:
             return True
 
     return False
+
+
+# Từ khoá thoát flow giữa chừng. Khi khách lỡ vào flow đặt phòng nhưng không muốn nữa,
+# gõ một trong các cụm này sẽ huỷ flow và quay lại chế độ chat thường.
+ABORT_TOKENS = {
+    "hủy", "huỷ", "huy", "thôi", "thoi", "thoát", "thoat",
+    "không", "khong", "ko", "kh", "không nữa", "khong nua", "ko nữa", "ko nua",
+    "dừng", "dung lai", "dừng lại",
+    "cancel", "exit", "quit", "stop", "nevermind", "never mind", "no thanks",
+}
+
+
+def is_abort(msg_lower):
+    """Khách gõ chính xác từ thoát (tránh false positive với câu chứa 'không' chung chung)."""
+    m = (msg_lower or "").strip().rstrip("!.?")
+    return m in ABORT_TOKENS
 
 
 def build_rooms_picker(lang, avail):
@@ -583,6 +641,11 @@ def chat():
 
     # ================== FLOW ==================
     if "step" in session:
+        # Cho phép thoát flow giữa chừng (vd khách lỡ trigger nhầm)
+        if is_abort(msg_lower):
+            session.clear()
+            return jsonify({"reply": tr(lang, "book_cancel"), "lang": lang})
+
         step = session["step"]
         b = session.get("booking", {})
 

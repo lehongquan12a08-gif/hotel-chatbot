@@ -73,38 +73,39 @@ def get_hotel_config():
 def build_hotel_info(config):
     """
     Xây dựng chuỗi HOTEL_INFO từ config dict để truyền vào AI prompt.
+    Section nào có giá trị rỗng thì bỏ qua để prompt gọn, không nhồi block trống.
     """
     def g(key, default=""):
-        return config.get(key, default)
+        return str(config.get(key, default) or "").strip()
 
-    return f"""
-Tên khách sạn: {g("hotel_name")}
-Địa chỉ: {g("address")}
-Hotline: {g("hotline")}
+    def s(title, value):
+        v = (value or "").strip()
+        return f"\n{title}:\n{v}\n" if v else ""
 
-Giá phòng:
-- Phòng đơn: {g("price_single")} / đêm
-- Phòng đôi: {g("price_double")} / đêm
-- Phòng Suite: {g("price_suite")} / đêm
-
-Check-in: {g("checkin_time")}
-Check-out: {g("checkout_time")}
-
-Tiện ích:
-{g("amenities")}
-
-Chính sách đặt cọc:
-{g("deposit_policy")}
-
-Thanh toán:
-{g("payment_policy")}
-
-Chính sách hủy:
-{g("cancel_policy")}
-
-Lưu ý:
-{g("note")}
-""".strip()
+    parts = [
+        f"Tên khách sạn: {g('hotel_name')}",
+        f"Địa chỉ: {g('address')}",
+        f"Hotline: {g('hotline')}",
+        "",
+        "Giá phòng:",
+        f"- Phòng đơn: {g('price_single')} / đêm",
+        f"- Phòng đôi: {g('price_double')} / đêm",
+        f"- Phòng Suite: {g('price_suite')} / đêm",
+        "",
+        f"Check-in: {g('checkin_time')}",
+        f"Check-out: {g('checkout_time')}",
+    ]
+    body = "\n".join(parts)
+    body += s("Tiện ích", g("amenities"))
+    body += s("Phí dịch vụ tiện ích", g("amenity_fees"))
+    body += s("Khu vui chơi & chụp ảnh gần khách sạn", g("nearby_attractions"))
+    body += s("Sự kiện sắp tới ở Phú Quốc", g("upcoming_events"))
+    body += s("Sự kiện trong khách sạn (lịch hát, hoạt động)", g("hotel_events"))
+    body += s("Chính sách đặt cọc", g("deposit_policy"))
+    body += s("Thanh toán", g("payment_policy"))
+    body += s("Chính sách hủy", g("cancel_policy"))
+    body += s("Lưu ý", g("note"))
+    return body.strip()
 
 # ================= UTILS =================
 def normalize_date(date_str):
